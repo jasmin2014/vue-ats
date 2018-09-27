@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+# 支持 sourcetree
+export PATH=/usr/local/bin:$PATH
+node "./hooks/post-commit.js"

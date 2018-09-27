@@ -1,0 +1,1188 @@
+<template>
+  <div class="apply">
+    <el-form ref="form"
+             :model="currentValue"
+             :rules="mode === 'VIEW' ? {} : rules"
+             class="apply"
+             label-width="150px">
+      <div class="loan">
+        <h4>
+          <span>借款信息</span>
+        </h4>
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="借贷编号">
+              <ats-input v-model="currentValue.loanApplicationNo" :mode="mode" :disabled="true"></ats-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="协议编号" prop="contract" :error="error.contract">
+              <ats-input v-model.trim="currentValue.contract" :mode="mode === 'CREATE' ? mode : 'VIEW'"></ats-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="借款金额" prop="loanAmount" :error="error.loanAmount">
+              <ats-input v-model="currentValue.loanAmount" :mode="mode"
+                         type="number" unit="元" :min="0" :step="0.01"></ats-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="借贷属性" prop="kind" :error="error.kind">
+              <ats-select v-if="type !== this.$enum.BUSINESS_ASSET || mode === 'VIEW'"
+                          v-model="currentValue.kind" :mode="mode" disabled
+                          :kind="this.$enum.LOAN_PROP" :group="this.$enum.LOAN_PROP"></ats-select>
+              <ats-select v-else
+                          v-model="currentValue.kind" :mode="mode" disabled
+                          :kind="this.$enum.LOAN_PROP" :group="this.$enum.LOAN_PROP"
+                          @change="handleLoanAttributeChange"></ats-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="资产类型" prop="assetKind" :error="error.assetKind">
+              <ats-select v-if="type !== this.$enum.BUSINESS_ASSET || mode === 'VIEW'"
+                          v-model="currentValue.assetKind" :mode="mode"
+                          :kind="this.$enum.ASSET_TYPE" :group="this.$enum.ASSET_TYPE"></ats-select>
+              <ats-select v-else
+                          v-model="currentValue.assetKind" :mode="mode" :options="assetKindList" clearable
+                          @change="handleAssetKindChange"></ats-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="项目名称" prop="loanKind" :error="error.loanKind">
+              <ats-select v-if="type !== this.$enum.BUSINESS_ASSET || mode === 'VIEW'"
+                          v-model="currentValue.loanKind" :mode="mode"
+                          :kind="this.$enum.LOAN_TYPE" :group="currentValue.assetKind"></ats-select>
+              <ats-select v-else
+                          v-model="currentValue.loanKind" :mode="mode" :options="loanKindList" clearable
+                          @change="handleLoanKindChange"></ats-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="还款方式" prop="repayWay" :error="error.repayWay">
+              <ats-select v-if="type !== this.$enum.BUSINESS_ASSET || mode === 'VIEW'"
+                          v-model="currentValue.repayWay" :mode="mode"
+                          :kind="this.$enum.REPAY_WAY" :group="this.$enum.REPAY_WAY"></ats-select>
+              <ats-select v-else
+                          v-model="currentValue.repayWay" :mode="mode" :options="repayWayList" clearable></ats-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="借款期数" prop="loanTerms" :error="error.loanTerms">
+              <ats-input v-model="currentValue.loanTerms" :mode="mode"
+                         type="number" :min="1" :max="72"></ats-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="期限(单位)" prop="loanTimeType" :error="error.loanTimeType || error.loanTime">
+              <el-col :span="12">
+                <ats-input v-model="currentValue.loanTime" :mode="mode"
+                           type="number" :min="1" :max="30"></ats-input>
+              </el-col>
+              <el-col :span="12">
+                <ats-select v-model="currentValue.loanTimeType" :mode="mode"
+                            :kind="this.$enum.TERM_UNIT" :group="this.$enum.TERM_UNIT"></ats-select>
+              </el-col>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="借款用途" prop="usageLoan" :error="error.usageLoan">
+              <ats-select v-model="currentValue.usageLoan" :mode="mode"
+                          :kind="this.$enum.LOAN_USAGE" :group="this.$enum.LOAN_USAGE_GROUP"></ats-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="还款来源" prop="payment" :error="error.payment">
+              <ats-select v-model="currentValue.payment" :mode="mode"
+                          :kind="this.$enum.PAYMENT_SOURCE" :group="this.$enum.PAYMENT_SOURCE"></ats-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="意向资金端" prop="intentionFund" :error="error.intentionFund">
+              <ats-input v-if="type === $enum.BUSINESS_FUND"
+                         v-model="fundOrgName" :mode="mode"></ats-input>
+              <ats-select v-else
+                          v-model="currentValue.intentionFund" placeholder="无"
+                          :org="this.$enum.BUSINESS_CHAIN_FUND"
+                          :mode="mode" clearable></ats-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="放款模式" prop="loanModel" :error="error.loanModel">
+              <ats-select v-if="type !== this.$enum.BUSINESS_ASSET || mode === 'VIEW'"
+                          v-model="currentValue.loanModel" :mode="mode" clearable
+                          :disabled-options="[$enum.LOAN_MODEL_CG, $enum.LOAN_MODEL_HG, $enum.LOAN_MODEL_CM]"
+                          :kind="this.$enum.LOAN_MODEL" :group="this.$enum.LOAN_MODEL"></ats-select>
+              <ats-select v-else
+                          v-model="currentValue.loanModel" :mode="mode"
+                          :disabled-options="[$enum.LOAN_MODEL_CG, $enum.LOAN_MODEL_HG, $enum.LOAN_MODEL_CM]"
+                          :options="loanModelList"></ats-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="还款模式" prop="repayModel" :error="error.repayModel">
+              <ats-select v-if="type !== this.$enum.BUSINESS_ASSET || mode === 'VIEW'"
+                          v-model="currentValue.repayModel" :mode="mode" clearable
+                          :kind="this.$enum.REPAY_MODEL" :group="this.$enum.REPAY_MODEL"></ats-select>
+              <ats-select v-else
+                          v-model="currentValue.repayModel" :mode="mode"
+                          :options="repayModelList"></ats-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="备注信息">
+              <ats-input v-if="mode !== 'CREATE'"
+                         v-model="remarks" mode="VIEW" :type="'textarea'" :rows="2"></ats-input>
+              <ats-input v-model.trim="currentValue.addNote"
+                         :mode="mode"
+                         v-if="mode !== 'VIEW'"></ats-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </div>
+      <div class="creditor">
+        <h4>
+          <span>债权信息</span>
+        </h4>
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="债权人">
+              <ats-select v-model="currentValue.creditor" :mode="mode"></ats-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="债权开始日">
+              <ats-date-picker v-model="currentValue.creditorStartTime"
+                               value-format="yyyy-MM-dd"
+                               :mode="mode"></ats-date-picker>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </div>
+      <div class="rate">
+        <h4>
+          <span>费率信息</span>
+        </h4>
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="渠道借款利率" prop="loanIntRate" :error="error.loanIntRate">
+              <ats-input v-model="loanIntRate" :mode="mode"
+                         type="number" unit="%" :min="0" :max="100" :step="0.01"></ats-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="11">
+            <el-form-item label="借款利率区间" prop="loanIntRateMin" :error="error.loanIntRateMin || error.loanIntRateMax">
+              <el-col :span="11">
+                <ats-input v-model="loanIntRateMin" :mode="mode"
+                           type="number" unit="%"
+                           :min="0" :max="100" :step="0.01"></ats-input>
+              </el-col>
+              <el-col :span="2" style="text-align: center;">
+                <span>-</span>
+              </el-col>
+              <el-col :span="11">
+                <ats-input v-model="loanIntRateMax" :mode="mode"
+                           type="number" unit="%"
+                           :min="0" :max="100" :step="0.01"></ats-input>
+              </el-col>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="合作利率" prop="cooperationRate" :error="error.cooperationRate">
+              <ats-input v-model="cooperationRate" :mode="mode"
+                         type="number" unit="%" :min="0" :max="100" :step="0.01"></ats-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="利率类型" prop="repayRateType" :error="error.repayRateType">
+              <ats-select v-model="currentValue.repayRateType" :mode="mode"
+                          :kind="this.$enum.LOAN_RATES" :group="this.$enum.LOAN_RATES"></ats-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="8"
+                  v-if="type !== this.$enum.BUSINESS_ASSET
+                        || currentValue.status === $enum.BLOCK_CHAIN_ASSET_STATUS_CLEARED
+                        || currentValue.status === $enum.BLOCK_CHAIN_ASSET_STATUS_LOAN_ALREADY_MADE">
+            <el-form-item label="借款利率" prop="repayIntRate" :error="error.repayIntRate">
+              <ats-input v-model="repayIntRate" :mode="mode"
+                         type="number" unit="%"
+                         :min="0" :max="100" :step="0.01"></ats-input>
+            </el-form-item>
+          </el-col>
+          <!--起息日即放款日，为资金端放款后存在的字段，在资金端、资产中心和资产端（仅履约资产）展示-->
+          <el-col :span="8"
+                  v-if="type !== this.$enum.BUSINESS_ASSET
+                        || currentValue.status === $enum.BLOCK_CHAIN_ASSET_STATUS_CLEARED
+                        || currentValue.status === $enum.BLOCK_CHAIN_ASSET_STATUS_LOAN_ALREADY_MADE">
+            <el-form-item label="起息日">
+              <ats-date-picker v-model="currentValue.paymentDate"
+                               value-format="yyyy-MM-dd"
+                               :mode="mode"></ats-date-picker>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </div>
+      <div class="raise">
+        <h4>
+          <span>募集需求</span>
+        </h4>
+        <el-row>
+          <el-col :span="10">
+            <el-form-item label="募集期" prop="raiseFromDate">
+              <ats-date-picker v-model="raiseDate" :mode="mode === 'EDIT' ? 'VIEW' : mode"
+                               :picker-options="raiseDateOptions"
+                               :type="'daterange'"></ats-date-picker>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </div>
+      <el-form class="data-source"
+               ref="dataSourceForm"
+               :model="newDataSource"
+               :rules="dataSourceRules"
+               size="small">
+        <el-row type="flex" justify="space-between" align="middle">
+          <h4>
+            <span>数据地址</span>
+          </h4>
+          <el-button size="small" type="primary" icon="fa fa-plus" title="新增数据源"
+                     v-if="mode !== 'VIEW'"
+                     @click="handleCreateDataSource()"></el-button>
+        </el-row>
+        <el-row>
+          <el-table :data="currentValue.dataSourceList" border>
+            <el-table-column label="序号" type="index" align="center"></el-table-column>
+            <el-table-column label="数据源名称" align="center">
+              <template slot-scope="scope">
+                <el-form-item v-if="scope.row.$create || scope.row.$edit"
+                              prop="kindCode">
+                  <ats-select v-model="newDataSource.kindCode"
+                              :kind="$enum.AUDIT_TYPE" :group="$enum.AUDIT_TYPE_CLIENT_INFO"
+                              @change="handleDataSourceKindChange"></ats-select>
+                </el-form-item>
+                <span v-else>{{ $filter(scope.row.kindCode, $enum.AUDIT_TYPE, $enum.AUDIT_TYPE_CLIENT_INFO) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="数据源哈希" align="center">
+              <template slot-scope="scope">
+                <el-form-item v-if="scope.row.$create || scope.row.$edit"
+                              prop="hash">
+                  <ats-input v-model="newDataSource.hash" disabled></ats-input>
+                </el-form-item>
+                <span v-else>{{ scope.row.hash }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="mode !== 'VIEW'"
+                             label="操作" align="center" width="150">
+              <template slot-scope="scope">
+                <div v-if="!scope.row.$edit && !scope.row.$create">
+                  <el-button title="编辑" size="small" type="info" icon="fa fa-edit"
+                             @click="handleEditDataSource(scope.row)"></el-button>
+                  <el-button title="删除" size="small" type="danger" icon="fa fa-trash"
+                             @click="handleDeleteDataSource(scope.row)"></el-button>
+                </div>
+                <div v-else>
+                  <el-button title="确认保存" size="small" type="primary"
+                             @click="handleSaveDataSource(scope.row)">保存</el-button>
+                  <el-button title="取消" size="small"
+                             @click="handleCancelDataSource(scope.row)">取消</el-button>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-row>
+      </el-form>
+      <div class="risk">
+        <h4>
+          <span>风控结果</span>
+        </h4>
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="风控评分" prop="score">
+              <ats-input v-model="currentValue.score" :mode="mode"
+                         type="number" :min="0"></ats-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="可贷额度" prop="loanLimit">
+              <ats-input v-model="currentValue.loanLimit" :mode="mode"
+                         type="number" unit="元" :min="0" :step="0.01"></ats-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="分享额度" prop="shareLimit">
+              <ats-input v-model="currentValue.shareLimit" :mode="mode"
+                         type="number" unit="元" :min="0" :step="0.01"></ats-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </div>
+      <div class="order">
+        <h4>
+          <span>下单条件</span>
+        </h4>
+        <el-row>
+          <el-col :span="11">
+            <el-form-item label="分享额度区间" prop="sharedLowerLimit" :error="error.sharedLowerLimit || error.sharedUpLimit">
+              <el-col :span="11">
+                <ats-input v-model="currentValue.sharedLowerLimit" :mode="mode"
+                           type="number" unit="元" :min="0" :step="0.01"></ats-input>
+              </el-col>
+              <el-col :span="2" style="text-align: center;">
+                <span>-</span>
+              </el-col>
+              <el-col :span="11">
+                <ats-input v-model="currentValue.sharedUpLimit" :mode="mode"
+                           type="number" unit="元" :min="0" :step="0.01"></ats-input>
+              </el-col>
+            </el-form-item>
+          </el-col>
+          <el-col :span="11">
+            <el-form-item label="分享利率区间(年化)" prop="sharedRateLowerLimit" :error="error.sharedRateLowerLimit || error.sharedRateUpLimit">
+              <el-col :span="11">
+                <ats-input v-model="sharedRateLowerLimit" :mode="mode"
+                           type="number" unit="%"
+                           :min="0" :max="100" :step="0.01"></ats-input>
+              </el-col>
+              <el-col :span="2" style="text-align: center;">
+                <span>-</span>
+              </el-col>
+              <el-col :span="11">
+                <ats-input v-model="sharedRateUpLimit" :mode="mode"
+                           type="number" unit="%"
+                           :min="0" :max="100" :step="0.01"></ats-input>
+              </el-col>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </div>
+      <div class="log">
+        <h4>
+          <span>创建信息</span>
+        </h4>
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="创建渠道">
+              <ats-input v-model="currentValue.assetChannel" :disabled="true"></ats-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="创建人">
+              <ats-input v-model="currentValue.creatorName" :disabled="true"></ats-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="创建时间">
+              <ats-date-picker v-model="currentValue.createdTime" :disabled="true"></ats-date-picker>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="提交时间">
+              <ats-date-picker v-model="currentValue.appliedTime" :disabled="true"></ats-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="所在省份">
+              <ats-select v-model="currentValue.creatorProvince" :mode="mode"
+                          :region="'86'" clearable></ats-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="所在城市">
+              <ats-select v-model="currentValue.creatorCity" :mode="mode"
+                          :region="currentValue.creatorProvince" clearable></ats-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="所在营业部" prop="creatorBusiness" :error="error.creatorBusiness">
+              <ats-input v-model.trim="currentValue.creatorBusiness" :mode="mode"></ats-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="保存状态">
+              <ats-input v-model="currentValue.saveStatus" :disabled="true"></ats-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="借款状态">
+              {{ $filter(value.status, $enum.BLOCK_CHAIN_ASSET_STATUS) }}
+              <!--<ats-select v-model="value.status" disabled-->
+                          <!--:kind="this.$enum.BLOCK_CHAIN_ASSET_STATUS"-->
+                          <!--:group="this.$enum.BLOCK_CHAIN_ASSET_STATUS"></ats-select>-->
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </div>
+    </el-form>
+  </div>
+</template>
+
+<script>
+  import {getEnumsByLoanAttr, getModelEnums} from '../../assets/api/asset';
+  import {getSysEnum} from '../../api/enum';
+
+  export default {
+    props: {
+      value: Object,
+      mode: String,
+      type: String,
+      error: {
+        type: Object,
+        default: function () {
+          return {}
+        }
+      }
+    },
+    data() {
+      return {
+        fundOrgName: '',
+        currentValue: Object.assign({
+          // id: '',
+          loanParty: '',
+          loanPartyKind: '',
+          loanPartyName: '',
+          loanIdent: '',
+          loanApplicationNo: '',
+          contract: '',
+          loanAmount: null,
+          kind: this.$enum.LOAN_PROP_NEW,
+          assetKind: '',
+          loanKind: '',
+          loanTerms: null,
+          loanTime: null,
+          loanTimeType: '',
+          repayWay: '',
+          usageLoan: '',
+          payment: '',
+          remarkList: [],
+          addNote: '',
+          loanModel: '',
+          repayModel: '',
+          intentionFund: '',
+          creditor: '',
+          creditorStartTime: '',
+          loanIntRate: null,
+          loanIntRateMin: null,
+          loanIntRateMax: null,
+          cooperationRate: null,
+          repayIntRate: null,
+          repayRateType: '',
+          raiseFromDate: '',
+          raiseThruDate: '',
+          dataSourceList: [],
+          // risk
+          score: null,
+          loanLimit: null,
+          shareLimit: null,
+          // order
+          sharedLowerLimit: null,
+          sharedUpLimit: null,
+          sharedRateLowerLimit: null,
+          sharedRateUpLimit: null,
+          // log
+          assetChannel: '',
+          creatorName: '',
+          createdTime: '',
+          appliedTime: '',
+          creatorProvince: '',
+          creatorCity: '',
+          creatorBusiness: '',
+          status: ''
+        }, this.value),
+        newDataSource: {},
+        isDataSourceEditing: false,
+        showUploadDialog: false,
+        uploadMode: '',
+        fileError: '',
+        assetKindList: [],
+        loanKindList: [],
+        repayWayList: [],
+        loanModelList: [],
+        repayModelList: [],
+        assetKindFullList: [],
+        loanKindFullList: [],
+        repayWayFullList: [],
+        loanModelFullList: [],
+        repayModelFullList: [],
+        rules: {
+          contract: [
+            { required: true, message: '请输入协议编号', trigger: 'blur' },
+            { min: 0, max: 50, message: '50字以内', trigger: 'blur'}
+          ],
+          loanAmount: [
+            { required: true, message: '请输入借款金额', trigger: 'blur', type: 'number' },
+            { min: 0, max: Number.MAX_SAFE_INTEGER, message: '范围0-' + Number.MAX_SAFE_INTEGER, trigger: 'blur', type: 'number' },
+            {
+              trigger: 'blur',
+              type: 'number',
+              validator: (rule, value, callback) => {
+                if (this.$valid.floatValidator(value, 2)) {
+                  callback()
+                } else {
+                  callback('保留2位小数')
+                }
+              }
+            }
+          ],
+          assetKind: [
+            { required: true, message: '请选择资产类型', trigger: 'change' }
+          ],
+          loanKind: [
+            { required: true, message: '请选择项目名称', trigger: 'change' }
+          ],
+          loanTerms: [
+            { required: true, message: '请输入借款期数', trigger: 'blur', type: 'number' },
+            { min: 1, max: 72, message: '期数范围为1-72', trigger: 'blur', type: 'number' },
+            {
+              trigger: 'blur',
+              type: 'number',
+              validator: (rule, value, callback) => {
+                if (this.$valid.floatValidator(value, 0)) {
+                  callback()
+                } else {
+                  callback('请输入整数')
+                }
+              }
+            }
+          ],
+          loanTimeType: [
+            { required: true, message: '请选择借款期限', trigger: 'change' },
+            { required: true,
+              trigger: 'change',
+              validator: (rule, value, callback) => {
+                if (value === this.$enum.TERM_UNIT_NATURAL_MONTH) {
+                  if (this.currentValue.loanTime !== 1) {
+                    callback('只能为1个月');
+                  } else if (!this.$valid.floatValidator(this.currentValue.loanTime, 0)) {
+                    callback('请输入整数')
+                  } else {
+                    callback();
+                  }
+                } else {
+                  if (this.currentValue.loanTime <= 0 || this.currentValue.loanTime > 30) {
+                    callback('天数范围为1-30天')
+                  } else if (!this.$valid.floatValidator(this.currentValue.loanTime, 0)) {
+                    callback('请输入整数')
+                  } else {
+                    callback()
+                  }
+                }
+              }
+            }
+          ],
+          repayWay: [
+            { required: true, message: '请选择还款方式', trigger: 'change' }
+          ],
+          usageLoan: [
+            { required: true, message: '请选择借款用途', trigger: 'change' }
+          ],
+          payment: [
+            { required: true, message: '请选择还款来源', trigger: 'change' }
+          ],
+          loanModel: [
+            { required: true, message: '请选择放款模式', trigger: 'change' }
+          ],
+          repayModel: [
+            { required: true, message: '请选择还款模式', trigger: 'change' }
+          ],
+          loanIntRate: [
+            { required: true, message: '请输入渠道借款利率', trigger: 'blur', type: 'number' },
+            { min: 0, max: 1, message: '利率范围为0-100%', trigger: 'blur', type: 'number' },
+            {
+              trigger: 'blur',
+              type: 'number',
+              validator: (rule, value, callback) => {
+                if (this.$valid.floatValidator(value, 4)) {
+                  callback()
+                } else {
+                  callback('保留2位小数')
+                }
+              }
+            }
+          ],
+          loanIntRateMin: [
+            { required: true, message: '请输入借款利率区间', trigger: 'blur', type: 'number' },
+            { min: 0, max: 1, message: '利率范围为0-100%', trigger: 'blur', type: 'number' },
+            {
+              trigger: 'blur',
+              type: 'number',
+              validator: (rule, value, callback) => {
+                if (this.$valid.floatValidator(value, 4)) {
+                  callback()
+                } else {
+                  callback('保留2位小数')
+                }
+              }
+            },
+            {
+              trigger: 'blur',
+              type: 'number',
+              validator: (rule, v, callback) => {
+                const value = this.currentValue.loanIntRateMax;
+                if (typeof value !== 'number' && !value) {
+                  callback('请输入借款利率区间')
+                } else if (value < 0 || value > 1) {
+                  callback('利率范围为0-100%')
+                } else if (!this.$valid.floatValidator(value, 4)) {
+                  callback('保留2位小数')
+                } else if (this.currentValue.loanIntRateMin > this.currentValue.loanIntRateMax) {
+                  callback('区间左值应小于或等于右值')
+                } else {
+                  callback();
+                }
+              }
+            }
+          ],
+          cooperationRate: [
+            { required: true, message: '请输入合作利率', trigger: 'blur', type: 'number' },
+            {
+              trigger: 'blur',
+              validator: (rule, value, callback) => {
+                if (value < 0 || value > 1) {
+                  callback('利率范围为0-100%')
+                } else if (!this.$valid.floatValidator(value, 4)) {
+                  callback('保留2位小数')
+                } else {
+                  callback()
+                }
+              }
+            }
+          ],
+          repayIntRate: [
+            { required: true, message: '请输入借款利率', trigger: 'blur', type: 'number' },
+            { min: 0, max: 1, message: '利率范围为0-100%', trigger: 'blur', type: 'number' },
+            {
+              trigger: 'blur',
+              type: 'number',
+              validator: (rule, value, callback) => {
+                if (this.$valid.floatValidator(value, 4)) {
+                  callback()
+                } else {
+                  callback('保留2位小数')
+                }
+              }
+            }
+          ],
+          repayRateType: [
+            { required: true, message: '请选择利率类型', trigger: 'change' }
+          ],
+          raiseFromDate: [
+            { required: true, message: '请选择募集期', trigger: 'change' }
+          ],
+          creatorBusiness: [
+            { min: 0, max: 100, message: '100字以内', trigger: 'blur' }
+          ],
+          score: [
+            { required: true, message: '请填写风控评分', trigger: 'blur', type: 'number' },
+            { min: 0, max: 100, message: '范围0-100', trigger: 'blur', type: 'number'}
+          ],
+          loanLimit: [
+            { required: true, message: '请填写可贷额度', trigger: 'blur', type: 'number' },
+            { min: 0, max: 99999999, message: '范围0-99999999', trigger: 'blur', type: 'number' },
+            {
+              trigger: 'blur',
+              type: 'number',
+              validator: (rule, value, callback) => {
+                if (this.$valid.floatValidator(value, 2)) {
+                  callback()
+                } else {
+                  callback('保留2位小数')
+                }
+              }
+            }
+          ],
+          shareLimit: [
+            { required: true, message: '请填写分享额度', trigger: 'blur', type: 'number' },
+            { min: 0, max: 99999999, message: '范围0-99999999', trigger: 'blur', type: 'number' },
+            {
+              trigger: 'blur',
+              type: 'number',
+              validator: (rule, value, callback) => {
+                if (this.$valid.floatValidator(value, 2)) {
+                  callback()
+                } else {
+                  callback('保留2位小数')
+                }
+              }
+            }
+          ],
+          sharedLowerLimit: [
+            {
+              required: true,
+              trigger: 'blur',
+              type: 'number',
+              validator: (rule, value, callback) => {
+                const upLimit = this.currentValue.sharedUpLimit;
+                if (typeof upLimit !== 'number' || typeof value !== 'number') {
+                  callback('请填写分享额度区间')
+                } else if (upLimit < 0 || upLimit > 99999999 || value < 0 || value > 99999999) {
+                  callback('范围0-99999999')
+                } else if (!this.$valid.floatValidator(upLimit, 2) || !this.$valid.floatValidator(value, 2)) {
+                  callback('保留2位小数')
+                } else {
+                  callback()
+                }
+              }
+            }
+          ],
+          sharedRateLowerLimit: [
+            {
+              required: true,
+              trigger: 'blur',
+              type: 'number',
+              validator: (rule, value, callback) => {
+                const upLimit = this.currentValue.sharedRateUpLimit;
+                if (typeof upLimit !== 'number' || typeof value !== 'number') {
+                  callback('请填写分享额度区间')
+                } else if (upLimit < 0 || upLimit > 1 || value < 0 || value > 1) {
+                  callback('范围0-100%')
+                } else if (!this.$valid.floatValidator(upLimit, 4) || !this.$valid.floatValidator(value, 4)) {
+                  callback('保留2位小数')
+                } else {
+                  callback()
+                }
+              }
+            }
+          ]
+        },
+        dataSourceRules: {
+          kindCode: [
+            { required: true, message: '请选择数据源名称', trigger: 'change' }
+          ],
+          hash: [
+            { required: true, message: '请输入数据源哈希', trigger: 'blur' }
+          ]
+        },
+        raiseDateOptions: {
+          disabledDate(time) {
+            return time.getTime() < Date.now() - 24 * 60 * 60 * 1000
+          }
+        }
+      }
+    },
+    computed: {
+      labelName() {
+        return this.value.loanPartyKind === this.$enum.SUBJECT_PROP_ORGANIZE ? '企业名称' : '客户姓名'
+      },
+      labelIdent() {
+        return this.value.loanPartyKind === this.$enum.SUBJECT_PROP_ORGANIZE ? '统一社会信用代码' : '证件号码'
+      },
+      loanIntRate: {
+        get() {
+          if (typeof this.currentValue.loanIntRate === 'number') {
+            return this.$floatMultiply(this.currentValue.loanIntRate, 100);
+          }
+          return '';
+        },
+        set(val) {
+          if (val === '') {
+            this.currentValue.loanIntRate = null;
+          } else {
+            this.currentValue.loanIntRate = this.$floatDivide(val, 100);
+          }
+        }
+      },
+      loanIntRateMin: {
+        get() {
+          if (typeof this.currentValue.loanIntRateMin === 'number') {
+            return this.$floatMultiply(this.currentValue.loanIntRateMin, 100);
+          }
+          return '';
+        },
+        set(val) {
+          if (val === '') {
+            this.currentValue.loanIntRateMin = null;
+          } else {
+            this.currentValue.loanIntRateMin = this.$floatDivide(val, 100);
+          }
+        }
+      },
+      loanIntRateMax: {
+        get() {
+          if (typeof this.currentValue.loanIntRateMax === 'number') {
+            return this.$floatMultiply(this.currentValue.loanIntRateMax, 100);
+          }
+          return '';
+        },
+        set(val) {
+          if (val === '') {
+            this.currentValue.loanIntRateMax = null;
+          } else {
+            this.currentValue.loanIntRateMax = this.$floatDivide(val, 100);
+          }
+        }
+      },
+      cooperationRate: {
+        get() {
+          if (typeof this.currentValue.cooperationRate === 'number') {
+            return this.$floatMultiply(this.currentValue.cooperationRate, 100);
+          }
+          return '';
+        },
+        set(val) {
+          if (val === '') {
+            this.currentValue.cooperationRate = null;
+          } else {
+            this.currentValue.cooperationRate = this.$floatDivide(val, 100);
+          }
+        }
+      },
+      repayIntRate: {
+        get() {
+          if (typeof this.currentValue.repayIntRate === 'number') {
+            return this.$floatMultiply(this.currentValue.repayIntRate, 100);
+          }
+          return '';
+        },
+        set(val) {
+          if (val === '') {
+            this.currentValue.repayIntRate = null;
+          } else {
+            this.currentValue.repayIntRate = this.$floatDivide(val, 100);
+          }
+        }
+      },
+      sharedRateLowerLimit: {
+        get() {
+          if (typeof this.currentValue.sharedRateLowerLimit === 'number') {
+            return this.$floatMultiply(this.currentValue.sharedRateLowerLimit, 100);
+          }
+          return '';
+        },
+        set(val) {
+          if (val === '') {
+            this.currentValue.sharedRateLowerLimit = null;
+          } else {
+            this.currentValue.sharedRateLowerLimit = this.$floatDivide(val, 100);
+          }
+        }
+      },
+      sharedRateUpLimit: {
+        get() {
+          if (typeof this.currentValue.sharedRateUpLimit === 'number') {
+            return this.$floatMultiply(this.currentValue.sharedRateUpLimit, 100);
+          }
+          return '';
+        },
+        set(val) {
+          if (val === '') {
+            this.currentValue.sharedRateUpLimit = null;
+          } else {
+            this.currentValue.sharedRateUpLimit = this.$floatDivide(val, 100);
+          }
+        }
+      },
+      remarks: {
+        get() {
+          if (this.currentValue.remarkList && this.currentValue.remarkList.length) {
+            return this.currentValue.remarkList.map((_, i) => `${i + 1}. ${_.remarks}[${_.createdTime}]`).join('\n')
+          } else {
+            return ''
+          }
+        },
+        set(val) {}
+      },
+      raiseDate: {
+        get() {
+          if (this.currentValue.raiseFromDate && this.currentValue.raiseThruDate) {
+            const dateRange = [];
+            dateRange[0] = this.currentValue.raiseFromDate;
+            dateRange[1] = this.currentValue.raiseThruDate;
+            return dateRange
+          }
+        },
+        set(val) {
+          if (val) {
+            this.currentValue.raiseFromDate = val[0];
+            this.currentValue.raiseThruDate = val[1];
+          } else {
+            this.currentValue.raiseFromDate = '';
+            this.currentValue.raiseThruDate = '';
+          }
+        }
+      }
+    },
+    watch: {
+      value: {
+        handler(val, oldVal) {
+          this.setCurrentValue(this.$deepcopy(val));
+        },
+        deep: true
+      }
+    },
+    created() {
+      /** 资金端查看时，资金意向端直接显示当前用户的机构名 **/
+      if (this.type === this.$enum.BUSINESS_FUND) {
+        if (this.$getLocalStorage('user')) {
+          this.fundOrgName = this.$getLocalStorage('user').companyName;
+        }
+      }
+      /** 资产端修改或创建时，[借贷属性、资产类型、项目名称（原借贷类型）、还款方式]的四级联动字段的初始化逻辑 **/
+      if (this.type === this.$enum.BUSINESS_ASSET && this.mode !== 'VIEW') {
+        if (this.$store.state.enums[`${this.$enum.ASSET_TYPE}.${this.$enum.ASSET_TYPE}`]) {
+          this.assetKindFullList = this.$store.state.enums[`${this.$enum.ASSET_TYPE}.${this.$enum.ASSET_TYPE}`];
+        } else {
+          getSysEnum(this.$enum.ASSET_TYPE, this.$enum.ASSET_TYPE).then(({data}) => {
+            this.assetKindFullList = data.body.map(_ => ({
+              text: _.displayName,
+              value: _.enumKey
+            }));
+          });
+        }
+        getSysEnum(this.$enum.LOAN_TYPE).then((res2) => {
+          this.loanKindFullList = res2.data.body.map(_ => ({
+            text: _.displayName,
+            value: _.enumKey
+          }));
+        });
+        if (this.$store.state.enums[`${this.$enum.REPAY_WAY}.${this.$enum.REPAY_WAY}`]) {
+          this.repayWayFullList = this.$store.state.enums[`${this.$enum.REPAY_WAY}.${this.$enum.REPAY_WAY}`];
+        } else {
+          getSysEnum(this.$enum.REPAY_WAY, this.$enum.REPAY_WAY).then(({data}) => {
+            this.repayWayFullList = data.body.map(_ => ({
+              text: _.displayName,
+              value: _.enumKey
+            }));
+          })
+        }
+        if (this.$store.state.enums[`${this.$enum.LOAN_MODEL}.${this.$enum.LOAN_MODEL}`]) {
+          this.loanModelFullList = this.$store.state.enums[`${this.$enum.LOAN_MODEL}.${this.$enum.LOAN_MODEL}`];
+        } else {
+          getSysEnum(this.$enum.LOAN_MODEL, this.$enum.LOAN_MODEL).then(({data}) => {
+            this.loanModelFullList = data.body.map(_ => ({
+              text: _.displayName,
+              value: _.enumKey
+            }));
+          });
+        }
+        if (this.$store.state.enums[`${this.$enum.REPAY_MODEL}.${this.$enum.REPAY_MODEL}`]) {
+          this.repayModelFullList = this.$store.state.enums[`${this.$enum.REPAY_MODEL}.${this.$enum.REPAY_MODEL}`];
+        } else {
+          getSysEnum(this.$enum.REPAY_MODEL, this.$enum.REPAY_MODEL).then(({data}) => {
+            this.repayModelFullList = data.body.map(_ => ({
+              text: _.displayName,
+              value: _.enumKey
+            }));
+          });
+        }
+      }
+    },
+    mounted() {
+      /** 资产端修改或创建时，[借款模式、还款模式]的二级联动字段的初始化逻辑 **/
+      if (this.type === this.$enum.BUSINESS_ASSET && this.mode !== 'VIEW') {
+        getModelEnums().then(({data}) => {
+          if (data.code === 200) {
+            this.loanModelList = this.loanModelFullList.filter(_ => data.body.loanModels.includes(_.value));
+            this.repayModelList = this.repayModelFullList.filter(_ => data.body.repayModels.includes(_.value));
+            if (!data.body.loanModels.includes(this.currentValue.loanModel)) {
+              this.currentValue.loanModel = '';
+            }
+            if (!data.body.repayModels.includes(this.currentValue.repayModel)) {
+              this.currentValue.repayModel = '';
+            }
+          }
+        })
+      }
+    },
+    methods: {
+      save(done) {
+        if (this.isDataSourceEditing) {
+          this.$alert('请先保存保障方案信息', '提示消息', {
+            confirmButtonText: '确定',
+            type: 'warning'
+          });
+          this.$emit('error');
+          return;
+        }
+        this.$refs.form.validate((valid) => {
+          if (valid) {
+            this.emitSave(done)
+          } else {
+            this.$emit('error');
+            this.$message.error('请检查保存信息');
+            return false;
+          }
+        })
+      },
+      emitSave(done) {
+        const base = {
+          // id: this.currentValue.id,
+          // partyId: this.currentValue.loanParty,
+          loanApplicationNo: this.currentValue.loanApplicationNo,
+          loanPartyKind: this.currentValue.loanPartyKind,
+          contract: this.currentValue.contract,
+          loanAmount: this.currentValue.loanAmount,
+          kind: this.currentValue.kind,
+          assetKind: this.currentValue.assetKind,
+          loanKind: this.currentValue.loanKind,
+          repayWay: this.currentValue.repayWay,
+          loanTerms: this.currentValue.loanTerms,
+          loanTimeType: this.currentValue.loanTimeType,
+          loanTime: this.currentValue.loanTimeType === this.$enum.TERM_UNIT_NATURAL_MONTH ? 1 : this.currentValue.loanTime,
+          usageLoan: this.currentValue.usageLoan,
+          payment: this.currentValue.payment,
+          intentionFund: this.currentValue.intentionFund,
+          loanModel: this.currentValue.loanModel,
+          repayModel: this.currentValue.repayModel,
+          remarks: this.currentValue.addNote,
+          creditor: this.currentValue.creditor,
+          creditorStartTime: this.currentValue.creditorStartTime,
+          loanIntRate: this.currentValue.loanIntRate,
+          loanIntRateMin: this.currentValue.loanIntRateMin,
+          loanIntRateMax: this.currentValue.loanIntRateMax,
+          cooperationRate: this.currentValue.cooperationRate,
+          repayIntRate: this.currentValue.repayIntRate,
+          repayRateType: this.currentValue.repayRateType,
+          raiseFromDate: this.currentValue.raiseFromDate,
+          raiseThruDate: this.currentValue.raiseThruDate,
+          creatorProvince: this.currentValue.creatorProvince,
+          creatorCity: this.currentValue.creatorCity,
+          creatorBusiness: this.currentValue.creatorBusiness,
+          assetChannel: this.currentValue.assetChannel || this.$getLocalStorage('user').companyName,
+          creatorName: this.currentValue.creatorName || this.$getLocalStorage('user').realName
+        };
+        const apply = this.$objClean({
+          loanApplicationDTO: this.$objClean(base),
+          status: this.currentValue.status,
+          dataSources: this.currentValue.dataSourceList,
+          riskControlResult: this.$objClean({
+            score: this.currentValue.score,
+            loanLimit: this.currentValue.loanLimit,
+            shareLimit: this.currentValue.shareLimit
+          }),
+          joinLimit: this.$objClean({
+            sharedLowerLimit: this.currentValue.sharedLowerLimit,
+            sharedUpLimit: this.currentValue.sharedUpLimit,
+            sharedRateLowerLimit: this.currentValue.sharedRateLowerLimit,
+            sharedRateUpLimit: this.currentValue.sharedRateUpLimit
+          })
+        });
+        if (typeof done === 'function') {
+          done(apply);
+        } else {
+          this.$emit('save', apply)
+        }
+      },
+      handleCancel() {
+        this.$router.go(-1)
+      },
+      clearDataSourceKind() {
+        this.$set(this.newDataSource, 'kindCode', null);
+      },
+      setDataSourceHash(hash) {
+        this.$set(this.newDataSource, 'hash', hash);
+      },
+      handleDataSourceKindChange(kindCode) {
+        this.$emit('data-kind-change', kindCode)
+      },
+      handleCreateDataSource() {
+        if (this.isDataSourceEditing) {
+          this.$alert('请先保存其他保障方案信息', '提示消息', {
+            confirmButtonText: '确定',
+            type: 'warning'
+          });
+          return;
+        }
+        this.isDataSourceEditing = true;
+        this.newDataSource = {};
+        this.currentValue.dataSourceList.push({
+          $create: true
+        });
+      },
+      handleEditDataSource(row) {
+        if (this.isDataSourceEditing) {
+          this.$alert('请先保存其他保障方案信息', '提示消息', {
+            confirmButtonText: '确定',
+            type: 'warning'
+          });
+          return;
+        }
+        this.newDataSource = this.$deepcopy(row);
+        this.isDataSourceEditing = true;
+        this.$set(row, '$edit', true);
+      },
+      handleDeleteDataSource(row, index) {
+        this.currentValue.dataSourceList.splice(index, 1);
+      },
+      handleSaveDataSource(row) {
+        this.$refs['dataSourceForm'].validate((valid) => {
+          if (valid) {
+            this.isDataSourceEditing = false;
+            row = Object.assign(row, {
+              kindCode: this.newDataSource.kindCode,
+              hash: this.newDataSource.hash
+            });
+            this.$set(row, '$edit', false);
+            this.$set(row, '$create', false);
+            delete row.$edit;
+            delete row.$create;
+            this.newDataSource = {};
+          } else {
+            return false;
+          }
+        });
+      },
+      handleCancelDataSource(row) {
+        if (row.$create) {
+          this.currentValue.dataSourceList.pop();
+        }
+        delete row.$edit;
+        delete row.$create;
+        this.isDataSourceEditing = false;
+        this.newDataSource = {};
+      },
+      setCurrentValue(val) {
+        this.currentValue = Object.assign(this.currentValue, val);
+      },
+      handleLoanAttributeChange(val) {
+        this.getEnumsByLoanAttribute(val).then(({data}) => {
+          if (data.code === 200) {
+            this.assetKindList = this.assetKindFullList.filter(_ => data.body.assetKinds.includes(_.value));
+            if (!data.body.assetKinds.includes(this.currentValue.assetKind)) {
+              this.currentValue.assetKind = '';
+            }
+          }
+        })
+      },
+      handleAssetKindChange(val) {
+        this.getEnumsByLoanAttribute(this.currentValue.kind, val).then(({data}) => {
+          if (data.code === 200) {
+            this.loanKindList = this.loanKindFullList.filter(_ => data.body.loanKinds.includes(_.value));
+            if (!data.body.loanKinds.includes(this.currentValue.loanKind)) {
+              this.currentValue.loanKind = '';
+            }
+          }
+        })
+      },
+      handleLoanKindChange(val) {
+        this.getEnumsByLoanAttribute(this.currentValue.kind, this.currentValue.assetKind, val).then(({data}) => {
+          if (data.code === 200) {
+            this.repayWayList = this.repayWayFullList.filter(_ => data.body.repayWays.includes(_.value));
+            if (!data.body.repayWays.includes(this.currentValue.repayWay)) {
+              this.currentValue.repayWay = '';
+            }
+          }
+        })
+      },
+      getEnumsByLoanAttribute(kind, assetKind, loanKind) {
+        if (this.type !== this.$enum.BUSINESS_ASSET) return;
+        return getEnumsByLoanAttr(kind, assetKind, loanKind)
+      }
+    }
+  }
+</script>
