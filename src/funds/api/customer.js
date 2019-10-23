@@ -2,26 +2,22 @@ import http from '../../lib/http';
 
 /** ================ LIST ======================= **/
 export const getIndividualCustomerList = (params) => {
-  params.currentPage = params.pageNumber;
-  delete params.pageNumber;
-  return http.funds.get('v1/person/customer/list/page', {
+  return http.funds.get('/v2/loan-party/person-customer/page', {
     params
   })
 };
 export const getEnterpriseCustomerList = (params) => {
-  params.searchKeyword = params.searchKey || '';
-  delete params.searchKey;
-  return http.funds.get('v1/party/enterprise/page', {
+  return http.funds.get('/v2/loan-party/org-customer/page', {
     params
   })
 };
 
 /** ================ DETAIL ======================= **/
-export const getIndividualDetail = (id) => {
-  return http.funds.get(`v1/person/customer/detail/${id}`)
+export const getIndividualDetail = (loanId) => {
+  return http.funds.get(`/v2/loan-application-customer/person-customer/${loanId}`)
 };
-export const getEnterpriseDetail = (id) => {
-  return http.funds.get(`v1/party/enterprise/${id}`)
+export const getEnterpriseDetail = (loanId) => {
+  return http.assets.get(`/v2/loan-application-customer/org-customer/${loanId}`)
 };
 export const getEnterpriseLegalDetail = (partyId) => {
   return http.funds.get('v1/party/enterprise/_find-enterprise-legal-person', {

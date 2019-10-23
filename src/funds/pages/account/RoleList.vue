@@ -4,7 +4,8 @@
       <el-row>
         <el-col :span="5">
           <el-form-item label="关键词">
-            <el-input v-model="search.roleName" placeholder="角色名称"></el-input>
+            <el-input v-model="search.roleName" placeholder="角色名称"
+                      clearable></el-input>
           </el-form-item>
         </el-col>
         <el-col :span="3">
@@ -40,8 +41,9 @@
       </el-table-column>
     </el-table>
     <el-row type="flex" justify="center" class="mgt20">
-      <el-pagination layout="prev, next" :total="pageTotal" :page-size="search.pageSize"
-                     @current-change="getData"></el-pagination>
+      <el-pagination :total="pageTotal" :page-size="search.pageSize"
+                     layout="total, prev, pager, next, jumper, sizes" :page-sizes="[20, 50, 100]"
+                     @current-change="getData" @size-change="handlePageSizeChange"></el-pagination>
     </el-row>
     <el-dialog :visible.sync="showDialog"
                :title="dialogTitle"
@@ -99,8 +101,8 @@
         business: this.$enum.BUSINESS_FUND,
         authList: {},
         detail: {
-          orgName: this.$getLocalStorage('user').companyName,
-          orgManagerId: this.$getLocalStorage('user').orgMgrPartyId,
+          orgName: this.$getLocalStorage('user').orgName,
+          orgManagerId: this.$getLocalStorage('user').orgId,
           appId: this.$enum.BUSINESS_FUND,
           actionCodeList: []
         }
@@ -127,6 +129,10 @@
       handleCreate() {
         this.mode = 'CREATE';
         this.showDialog = true;
+      },
+      handlePageSizeChange(size) {
+        this.search.pageSize = size;
+        this.getData(this.search.pageNumber)
       },
       handleDetail(row) {
         this.mode = 'VIEW';
@@ -156,7 +162,9 @@
                 });
                 this.getData(this.search.currentPage)
               }
-            }, () => {})
+            }, () => {
+              this.getData(this.search.currentPage)
+            })
           }).catch(() => {})
         }, () => {})
       },
@@ -204,8 +212,8 @@
       handleDialogClose() {
         this.mode = 'VIEW';
         this.detail = {
-          orgName: this.$getLocalStorage('user').companyName,
-          orgManagerId: this.$getLocalStorage('user').orgMgrPartyId,
+          orgName: this.$getLocalStorage('user').orgName,
+          orgManagerId: this.$getLocalStorage('user').orgId,
           appId: this.business,
           actionCodeList: []
         };

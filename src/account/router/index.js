@@ -2,6 +2,7 @@ import Login from '../components/Login.vue'
 import User from '../components/User.vue'
 import Reset from '../components/Reset.vue'
 import Modify from '../components/Modify.vue'
+import SendEmail from '../components/SendEmail.vue'
 
 export default {
   base: '/account/',
@@ -20,15 +21,31 @@ export default {
       name: 'Reset',
       component: Reset,
       meta: {
-        type: 'reset'
+        type: 'RESET_PASSWORD'
       }
     },
     {
       path: '/active',
-      name: 'Active',
+      name: 'Activate',
       component: Reset,
       meta: {
-        type: 'active'
+        type: 'ACTIVE_USER'
+      }
+    },
+    {
+      path: '/send-email/active',
+      name: 'ActivateEmail',
+      component: SendEmail,
+      meta: {
+        type: 'ACTIVE_USER'
+      }
+    },
+    {
+      path: '/send-email/reset',
+      name: 'ResetEmail',
+      component: SendEmail,
+      meta: {
+        type: 'RESET_PASSWORD'
       }
     },
     // {

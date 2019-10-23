@@ -1,9 +1,7 @@
 // 资产信息
 import http from '../../lib/http'
 
-/*
- * 资产信息列表
- * */
+/** ============ 资产信息 ============ **/
 // 列表
 export const getAssetInfoList = (params) => {
   return http.center.get('/v1/assets-audit/loan-list/page', { params })
@@ -29,7 +27,7 @@ export const getLoanApplication = (loanId) => {
 
 // 借贷申请详情-证明材料接口
 export const getProofMaterialList = (loanId) => {
-  return http.center.get(`/v1/assets-audit/loan-list/proof-material/${loanId}`);
+  return http.center.get(`/v2/proof-material/list/${loanId}`)
 };
 
 // 借贷申请详情-收费记录接口
@@ -41,126 +39,40 @@ export const getFeeList = (loanApplication, phase) => {
     }
   });
 };
-
-/*
- * 资产分类设置
- * */
-// 分类列表
-export const getCategoryList = (params) => {
-  return http.center.get('/v1/app/asset-category', {
-    params
-  })
-};
-// 删除
-export const delCategoryRow = (categoryId) => {
-  return http.center.delete(`/v1/app/asset-category/${categoryId}`, {
-    headers: {
-      'X-Action-Code': window.__buttons['AssetCategoryDelete']
-    }
-  })
-};
-// 新增
-export const newCategory = (categoryName, assetOrg, assetKind, loanKind) => {
-  return http.center.post('/v1/app/asset-category', {
-    categoryName, // 资产类名
-    assetOrg, // 资产渠道编号
-    assetKind, // 资产类型编号
-    loanKind
-  }, {
-    headers: {
-      'X-Action-Code': window.__buttons['AssetCategoryCreate']
-    }
-  })
-};
-// 查看
-export const categoryDecs = (categoryId) => {
-  return http.center.get(`/v1/app/asset-category/${categoryId}`, {
-    headers: {
-      'X-Action-Code': window.__buttons['AssetCategoryEdit']
-    }
-  })
-};
-// 编辑
-export const editCategory = ( categoryId, loanKind,checked) => {
-  return http.center.put(`/v1/app/asset-category/${categoryId}`, {
-    loanKind,
-    checked
-  }, {
-    headers: {
-      'X-Action-Code': window.__buttons['AssetCategoryEdit']
-    }
-  })
+// 保障方案
+export const getProtection = (planId) => {
+  return http.center.get(`/v2/protection-plan/${planId}`)
 };
 
-/*
- * 机构费率设置
- * */
-// 列表
-export const getOrgRateList = (params) => {
-  return http.center.get('/v1/asset/category/rate', {
-    params
-  })
-};
-// 查看
-export const orgRateDetail = (id) => {
-  return http.center.get(`/v1/asset/category/rate/${id}`)
-};
-// 编辑
-export const editOrgRate = (id,data) => {
-  return http.center.put(`/v1/asset/category/rate/${id}`, data)
-};
-//删除
-export const deleteOrgRate = (id) => {
-  return http.center.delete(`/v1/asset/category/rate/${id}`)
-};
-//新增
-export const createOrgRate = (data) => {
-  return http.center.post(`/v1/asset/category/rate/`,data)
-};
-
-/* ============ 风控配置 ============ */
-// 列表
-export const getConfigList = (categoryId) => {
-  return http.center.get('/v1/category/risk/configure', {
-    params: {
-      categoryId
-    }
-  })
-};
-//修改
-export const editConfig = (riskId) => {
-    return http.center.get(`/v1/category/risk/configure/${riskId}`)
-}
-
+/** ============ 风控配置 ============ **/
 // 风控配置下拉
 export const getConfigures = () => {
   return http.center.get('/v1/category/risk/configure/strategy')
 };
-// 添加
-export const createStrategy = (params) => {
-  return http.center.post('/v1/category/risk/configure', params)
-};
-// 修改
-export const editStrategy = (id,params) => {
-  return http.center.put(`/v1/category/risk/configure/${id}`, params)
+export const getRiskConfigList = () => {
+  return http.center.get('/v1/category/risk/configure/shikra/strategy')
 };
 
-/*
- * 数据源配置
- * */
-// 列表
-export const getDataSourceList = (categoryId) => {
-  return http.center.get('/v1/app/asset-data/source', {
-    params: {
-      categoryId
-    }
+/** 项目配置申请 **/
+export const getProjectConfigList = (params) => {
+  return http.center.get('/v2/project-config/page', {
+    params
   })
 };
-// 取消or选中
-export const changeSource = (params) => {
-  return http.center.put(`/v1/app/asset-data/source`, params)
+export const getProjectConfigDetail = (id) => {
+  return http.center.get(`/v2/project-config/details/${id}`)
 };
-
-export const getCategoryLoans = (params) => {
-    return http.center.get(`v1/asset/category/loan`, {params})
-}
+export const passProjectConfig = (id, data) => {
+  data.id = id;
+  return http.center.post('/v2/project-config/_audit-success', data)
+};
+export const rejectProjectConfig = (id) => {
+  return http.center.post('/v2/project-config/_audit-failure', {
+    id
+  })
+};
+/** 修改风控配置 **/
+export const editProjectConfigRisk = (id, data) => {
+  data.id = id;
+  return http.center.put('/v2/project-config/_update-project-config-risk', data)
+};

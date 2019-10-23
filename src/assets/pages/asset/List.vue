@@ -14,24 +14,31 @@
           </el-form-item>
         </el-col>
         <el-col :span="5">
-          <el-form-item label="项目名称">
-            <ats-select v-model="search.loanKind" placeholder="全部" :clearable="true"
-                        :kind="this.$enum.LOAN_TYPE" :group="search.assetKind"></ats-select>
+          <el-form-item label="业务类型">
+            <ats-select v-model="search.projectType" placeholder="全部" :clearable="true"
+                        :kind="this.$enum.PROJECT_TYPE" :group="this.$enum.PROJECT_TYPE"></ats-select>
           </el-form-item>
         </el-col>
+        <!--<el-col :span="5">-->
+          <!--<el-form-item label="项目名称">-->
+            <!--<ats-select v-model="search.loanKind" placeholder="全部" :clearable="true"-->
+                        <!--:kind="this.$enum.LOAN_TYPE" :group="search.assetKind"></ats-select>-->
+          <!--</el-form-item>-->
+        <!--</el-col>-->
         <el-col :span="5">
           <el-form-item label="状态">
             <ats-select v-model="assetStatus" placeholder="全部" :clearable="true"
                         :kind="this.$enum.LOAN_STATUS" :group="this.$enum.LOAN_STATUS_GROUP"
-                        :sequence="[0,1,2,3,4,5,6,7,8,9,13,14]"></ats-select>
+                        :sequence="statusSequence"></ats-select>
           </el-form-item>
         </el-col>
         <el-col :span="8">
           <el-form-item label="关键词">
-            <el-input v-model.trim="search.otherParams" placeholder="借贷编号/协议编号/客户姓名/企业名称"></el-input>
+            <el-input v-model.trim="search.otherParams" placeholder="借款编号/协议编号/客户姓名/企业名称"
+                      clearable></el-input>
           </el-form-item>
         </el-col>
-        <el-col :span="7">
+        <el-col :span="10">
           <el-button type="primary" icon="fa fa-search" title="查找"
                      @click="handleSearch"></el-button>
           <el-button v-action="'AssetApplyCreate'"
@@ -41,20 +48,39 @@
                      type="success" icon="fa fa-check-square"
                      @click="handleBatchSubmit">&nbsp;提交</el-button>
           <el-button v-action="'AssetApplyRevoke'"
+                     v-if="$store.state.user.repealSwitch === 1"
                      type="warning" icon="fa fa-undo"
                      @click="handleBatchRevoke">&nbsp;撤贷</el-button>
+          <el-button v-action="'AssetApplyDownload'"
+                     type="warning" icon="fa fa-download" title="导出数据到Excel"
+                     @click="handleDownload"></el-button>
+          <stat-loan-amount v-action="'AssetApplyStat'"
+                            :list="list.map(_ => _.loanAmount)"
+                            :search="oldSearch"
+                            :get-total="getTotal"
+                            style="margin-left: 10px;"></stat-loan-amount>
         </el-col>
       </el-row>
     </el-form>
     <el-row>
       <el-table :data="list" border
                 @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="55" align="center" fixed="left"></el-table-column>
-        <el-table-column v-for="(col, index) in table" :prop="col.prop" :label="col.label" :formatter="col.formatter"
-                         :width="col.width" :key="index" align="center"></el-table-column>
+        <el-table-column v-for="(col, index) in table" :key="index"
+                         v-bind="col"
+                         align="center"></el-table-column>
+        <el-table-column label="状态" align="center" fixed="right" width="100">
+          <template slot-scope="scope">
+            <el-tag v-if="isSubmitting(scope.row)"
+                    :type="$enum.LOAN_STATUS_COLOR_MAP[scope.row.status]">提交中</el-tag>
+            <el-tag v-else
+                    :type="$enum.LOAN_STATUS_COLOR_MAP[scope.row.status]">
+              {{ $filter(scope.row.status, $enum.LOAN_STATUS, $enum.LOAN_STATUS_GROUP) }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="备注" align="center" fixed="right">
           <template slot-scope="scope">
-            {{ scope.row.remarks }}<br>
+            {{ scope.row.remarks ? scope.row.remarks.split(':')[0] : '' }}<br>
             <el-tooltip content="查看备注">
               <el-button size="mini" icon="fa fa-ellipsis-h"
                          @click="handleNoteDetail(scope.row)"></el-button>
@@ -68,20 +94,14 @@
               <el-button size="small" icon="fa fa-eye"
                          @click="handleDetail(scope.row)"></el-button>
             </el-tooltip>
-            <!--下期需求-->
-            <!--<el-tooltip v-action="'AssetApplyPlanDetail'"-->
-                        <!--content="查看还款计划">-->
-              <!--<el-button size="small"-->
-                         <!--@click="handlePlanDetail(scope.row)">还款计划</el-button>-->
-            <!--</el-tooltip>-->
             <el-tooltip v-action="'AssetApplyEdit'"
-                        v-if="canEdit(scope.row.status)"
+                        v-if="canEdit(scope.row)"
                         content="编辑">
               <el-button size="small" type="info" icon="fa fa-edit"
                          @click="handleEdit(scope.row)"></el-button>
             </el-tooltip>
             <el-tooltip v-action="'AssetApplyDelete'"
-                        v-if="canDelete(scope.row.status)"
+                        v-if="canDelete(scope.row)"
                         content="删除">
               <el-button size="small" type="danger" icon="fa fa-trash"
                          @click="handleDelete(scope.row)"></el-button>
@@ -91,8 +111,9 @@
       </el-table>
     </el-row>
     <el-row type="flex" justify="center" class="mgt20">
-      <el-pagination layout="prev, next" :total="pageTotal" :page-size="search.pageSize"
-                     @current-change="getData"></el-pagination>
+      <el-pagination :total="pageTotal" :page-size="search.pageSize"
+                     layout="total, prev, pager, next, jumper, sizes" :page-sizes="[20, 50, 100]"
+                     @current-change="getData" @size-change="handlePageSizeChange"></el-pagination>
     </el-row>
   </div>
 </template>
@@ -103,25 +124,42 @@
     getLoanRemark,
     batchSubmit,
     batchRevoke,
-    deleteLoan} from '../../api/asset'
+    deleteLoan,
+    downloadLoanApplicationList,
+    getLoanApplicationTotal
+  } from '../../api/asset'
+  import StatLoanAmount from '../../../modules/stat/StatLoanAmount'
+
+  const statusSequence = [0, 1, 3, 5, 6, 8, 14];
 
   export default {
+    components: {
+      StatLoanAmount
+    },
     data() {
       return {
-        activeName: 'personal',
+        statusSequence,
+        getTotal: getLoanApplicationTotal,
         search: {
           appliedStartTime: this.$dateStringify(this.$lastNMonth(new Date(), 3)),
           appliedEndTime: this.$dateStringify(new Date()),
-          statusCount: this.$arrayToBinary([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 14]),
+          statusCount: this.$arrayToBinary(statusSequence),
           pageSize: 20,
           pageNumber: 1
         },
+        oldSearch: {},
         pageTotal: 0,
         list: [],
         selected: [],
         table: [
           {
-            label: '借贷编号',
+            type: 'selection',
+            width: 55,
+            fixed: 'left',
+            selectable: (row) => (this.canSubmit(row) || this.canRevoke(row)) && !this.isSubmitting(row)
+          },
+          {
+            label: '借款编号',
             prop: 'loanApplicationNo'
           },
           {
@@ -143,18 +181,22 @@
             formatter: (row, col, value) => this.$filter(value, this.$enum.ASSET_TYPE, this.$enum.ASSET_TYPE)
           },
           {
+            label: '业务类型',
+            prop: 'projectType',
+            formatter: (row, col, value) => this.$filter(value, this.$enum.PROJECT_TYPE, this.$enum.PROJECT_TYPE)
+          },
+          {
             label: '项目名称',
-            prop: 'loanKind',
-            formatter: (row, col, value) => this.$filter(value, this.$enum.LOAN_TYPE, row.assetKind)
+            prop: 'projectName'
           },
           {
             label: '借款金额(元)',
             prop: 'loanAmount'
           },
           {
-            label: '借款利率区间',
-            prop: 'loanYearRateMin',
-            formatter: (row, col, val) => !val && !row.loanYearRateMax ? '--' : `${this.$floatToPercentage(val) || ''} - ${this.$floatToPercentage(row.loanYearRateMax) || ''}`
+            label: '借款利率(年化利率)',
+            prop: 'repayYearRate',
+            formatter: (row, col, val) => this.$floatToPercentage(val)
           },
           {
             label: '借款期数',
@@ -171,20 +213,13 @@
             formatter: (row, col, value) => this.$filter(value, this.$enum.REPAY_WAY, this.$enum.REPAY_WAY)
           },
           {
-            label: '募集期',
-            prop: 'raiseFromDate',
-            width: 100,
-            formatter: (row, col, value) => (value || row.raiseThruDate) ? `${value.slice() || '?'} - ${row.raiseThruDate || '?'}` : '不限'
-          },
-          {
-            label: '状态',
-            prop: 'status',
-            formatter: (row, col, value) => this.$filter(value, this.$enum.LOAN_STATUS, this.$enum.LOAN_STATUS_GROUP)
-          },
-          {
             label: '申请时间',
             prop: 'appliedTime',
             width: 85
+          },
+          {
+            label: '所属营业部',
+            prop: 'creatorBusiness'
           }
         ]
       };
@@ -231,7 +266,7 @@
           if (val) {
             this.assetStatusList = [this.$enum.LOAN_STATUS_LIST.indexOf(val)]
           } else {
-            this.assetStatusList = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 14]
+            this.assetStatusList = statusSequence
           }
         }
       }
@@ -243,21 +278,33 @@
       handleSearch() {
         this.getData(1)
       },
+      handlePageSizeChange(size) {
+        this.search.pageSize = size;
+        this.getData(this.search.pageNumber)
+      },
       handleBatchSubmit() {
-        const selectedIds = this.selected.filter(_ => this.canSubmit(_.status)).map(_ => _.id);
+        const selectedIds = this.selected.filter(_ => this.canSubmit(_)).map(_ => _.id);
         if (selectedIds.length === 0) {
-          this.$message.error('没有可提交的借贷申请')
+          this.$message.error('没有可提交的借贷申请');
+          this.getData(this.search.pageNumber)
         } else {
           this.doSubmit(this.$deepcopy(selectedIds), true);
         }
       },
       handleBatchRevoke() {
-        const selectedIds = this.selected.filter(_ => this.canRevoke(_.status)).map(_ => _.id);
+        const selectedIds = this.selected.filter(_ => this.canRevoke(_)).map(_ => _.id);
         if (selectedIds.length === 0) {
-          this.$message.error('没有可撤销的借贷申请')
+          this.$message.error('没有可撤销的借贷申请');
+          this.getData(this.search.pageNumber)
         } else {
-          this.doRevoke(this.$deepcopy(selectedIds), true);
+          this.$confirm('确定对借款申请进行撤贷？', '提示').then(() => {
+            this.doRevoke(this.$deepcopy(selectedIds), true);
+          })
         }
+      },
+      handleDownload() {
+        const search = this.$deepcopy(this.search);
+        this.$download(downloadLoanApplicationList(search), this.$store)
       },
       handleCreate() {
         this.$router.push({
@@ -325,19 +372,22 @@
           }
         }, () => {})
       },
-      canEdit(status) {
-        return this.canSubmit(status)
+      isSubmitting(row) {
+        return row.autoSubmit === 1 && row.status === this.$enum.LOAN_STATUS_SUBMITTING; // 自动提交开 且 状态为待提交
       },
-      canSubmit(status) {
-        return [this.$enum.LOAN_STATUS_SUBMITTING, this.$enum.LOAN_STATUS_REJECTED, this.$enum.LOAN_STATUS_WAIT_FEEDBACK].includes(status)
+      canEdit(row) {
+        return this.canSubmit(row)
       },
-      canRevoke(status) {
+      canSubmit(row) {
+        return [this.$enum.LOAN_STATUS_REJECTED, this.$enum.LOAN_STATUS_WAIT_FEEDBACK, this.$enum.LOAN_STATUS_SUBMITTING].includes(row.status) && !this.isSubmitting(row);
+      },
+      canRevoke(row) {
         return ![this.$enum.LOAN_STATUS_IN_LOAN,
           this.$enum.LOAN_STATUS_WITHDRAWAL,
-          this.$enum.LOAN_STATUS_LOAN_FAIL].includes(status);
+          this.$enum.LOAN_STATUS_LOAN_FAIL].includes(row.status);
       },
-      canDelete(status) {
-        return [this.$enum.LOAN_STATUS_SUBMITTING, this.$enum.LOAN_STATUS_REJECTED, this.$enum.LOAN_STATUS_RAISE_FAIL].includes(status)
+      canDelete(row) {
+        return [this.$enum.LOAN_STATUS_WITHDRAWAL].includes(row.status)
       },
       doSubmit(idList, isBatch = false) {
         batchSubmit(idList).then(({data}) => {
@@ -347,16 +397,14 @@
             }
             setTimeout(() => {
               this.$message({
-                message: `${data.body.successCount}条提交成功` + (data.body.failCount > 0 ? `，${data.body.failCount}条提交失败 ${data.detail}` : ''),
+                message: `${data.body.successCount}条提交成功` + (data.body.failCount > 0 ? `，${data.body.failCount}条提交失败` : ''),
                 type: data.body.successCount === 0 ? 'error' : 'success'
               });
               this.getData(this.search.pageNumber)
             }, 1000);
           }
         }).catch(() => {
-          setTimeout(() => {
-            this.getData(this.search.pageNumber)
-          }, 1000);
+          this.getData(this.search.pageNumber)
         })
       },
       doRevoke(idList) {
@@ -372,9 +420,7 @@
             }, 1000);
           }
         }).catch(() => {
-          setTimeout(() => {
-            this.getData(this.search.pageNumber)
-          }, 1000);
+          this.getData(this.search.pageNumber)
         })
       },
       getData(index) {
@@ -383,6 +429,7 @@
         getLoanApplicationList(search).then(response => {
           const res = response.data;
           if (res.code === 200 && res.body) {
+            this.oldSearch = search;
             this.list = res.body.list || [];
             this.pageTotal = res.body.totalRecord;
             this.search.pageNumber = res.body.pageNumber;

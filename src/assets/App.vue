@@ -8,7 +8,8 @@
   export default {
     name: 'app',
     mounted() {
-      this.$setLocalStorage('type', 1)
+      this.$setLocalStorage('type', 1);
+      this.$store.commit('saveBusinessType', this.$enum.BUSINESS_ASSET)
     }
   };
 </script>

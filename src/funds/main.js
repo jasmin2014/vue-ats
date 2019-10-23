@@ -12,7 +12,7 @@ import Global from '../lib/global'
 import states from '../vuex/store'
 import {getMenu} from './api/account'
 
-const isDebugMode = NODE_ENV === 'development';
+const isDebugMode = NODE_ENV !== 'production';
 Vue.config.devtools = isDebugMode;
 Vue.config.productionTip = isDebugMode;
 Vue.use(Vuex);

@@ -150,29 +150,6 @@ $fa-css-prefix: el-icon-fa;
   text-align: left;
 }
 
-/* 分页图标样式 */
-.el-pagination {
-  .btn-next, .btn-prev {
-    .el-icon {
-      font-size: 14px;
-    }
-  }
-  .btn-prev {
-    .el-icon {
-      &:before {
-        content: '上一页'
-      }
-    }
-  }
-  .btn-next {
-    .el-icon {
-      &:before {
-        content: '下一页'
-      }
-    }
-  }
-}
-
 /* ================ FORM ========================== */
 .custom-form .el-form-item__label,
 .custom-form .customlabel {
@@ -213,6 +190,14 @@ $fa-css-prefix: el-icon-fa;
       line-height: 1;
       .el-input__inner {
         height: 42px;
+        box-sizing: border-box;
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+      }
+
+      .el-textarea__inner {
+        min-height: 42px !important;
+        padding-top: 10px;
         box-sizing: border-box;
         border-top-left-radius: 0;
         border-bottom-left-radius: 0;
@@ -432,7 +417,7 @@ form.fixed-width {
 }
 
 .upload-view {
-  .el-upload--picture-card {
+  .el-upload--picture-card, .el-upload--text {
     display: none;
   }
 }
@@ -455,9 +440,31 @@ i.required {
   }
 }
 
+/** UPLOAD: 隐藏delete键删除提示 **/
+.el-upload-list__item .el-icon-close-tip {
+  display: none !important;
+}
+
 /* ============ MESSAGE ALIGN CENTER =================== */
 .el-message {
   -webkit-box-pack: center;
   -ms-flex-pack: center;
   justify-content: center;
+}
+
+.el-tag--pink {
+  background-color: #ffeaf5;
+  border-color: #fbbedf;
+  color: #ff1493;
+
+  .el-tag__close {
+    color: #ff1493;
+  }
+}
+
+/* ========= BUTTON =========== */
+// 圆形按钮
+.el-button.is-circle {
+  padding: 12px;
+  border-radius: 50%;
 }

@@ -21,7 +21,7 @@
             <ats-select v-model="assetStatus"
                         :kind="this.$enum.LOAN_STATUS"
                         :group="this.$enum.LOAN_STATUS_GROUP"
-                        :sequence="[1,2,3,4,5,6,7,8,9,10,12,13,14,15]"
+                        :sequence="statusSequence"
                         placeholder="全部"
                         clearable></ats-select>
           </el-form-item>
@@ -36,10 +36,10 @@
           </el-form-item>
         </el-col>
         <el-col :span="5">
-          <el-form-item label="项目名称">
-            <ats-select v-model="search.loanKind"
-                        :kind="this.$enum.LOAN_TYPE"
-                        :group="search.assetKind"
+          <el-form-item label="业务类型">
+            <ats-select v-model="search.projectType"
+                        :kind="this.$enum.PROJECT_TYPE"
+                        :group="this.$enum.PROJECT_TYPE"
                         placeholder="全部"
                         clearable></ats-select>
           </el-form-item>
@@ -56,7 +56,8 @@
         <el-col :span="7">
           <el-form-item label="关键词">
             <el-input v-model="search.otherParams"
-                      placeholder="姓名/协议编号/借贷编号"></el-input>
+                      placeholder="姓名/协议编号/借款编号"
+                      clearable></el-input>
           </el-form-item>
         </el-col>
         <el-col :span="3">
@@ -70,8 +71,8 @@
 
     <el-row>
       <el-table :data="list" class='table-center' border>
-        <el-table-column prop="loanApplicationNo" label="借贷编号"></el-table-column>
-        <el-table-column prop="assetChannel" label="资产渠道"></el-table-column>
+        <el-table-column prop="loanApplicationNo" label="借款编号"></el-table-column>
+        <el-table-column prop="assetOrgName" label="资产渠道"></el-table-column>
         <el-table-column prop="contract" label="协议编号"></el-table-column>
         <el-table-column prop="loanPartyKind" label="主体性质"
                          :formatter="(row, col, val) => (this.$filter(val, this.$enum.SUBJECT_PROP, this.$enum.SUBJECT_PROP))"></el-table-column>
@@ -81,8 +82,9 @@
                          :formatter="(row, col, val) => this.$filter(val, this.$enum.RISK_LEVEL, this.$enum.RISK_LEVEL_GROUP)"></el-table-column>
         <el-table-column prop="assetKind" label="资产类型"
                          :formatter="(row, col, val) => (this.$filter(val, this.$enum.ASSET_TYPE, this.$enum.ASSET_TYPE))"></el-table-column>
-        <el-table-column prop="loanKind" label="项目名称"
-                         :formatter="(row, col, val) => (this.$filter(val, this.$enum.LOAN_TYPE, row.assetKind))"></el-table-column>
+        <el-table-column prop="projectType" label="业务类型"
+                         :formatter="(row, col, val) => (this.$filter(val, this.$enum.PROJECT_TYPE, this.$enum.PROJECT_TYPE))"></el-table-column>
+        <el-table-column prop="projectName" label="项目名称"></el-table-column>
         <el-table-column prop="loanAmount" label="借款金额（元）"></el-table-column>
         <el-table-column prop="repayIntRate" label="借款利率(年化利率)"
                          :formatter="(row, col, val) => (this.$floatToPercentage(val))"></el-table-column>
@@ -91,14 +93,17 @@
                          :formatter="(row, col, val) => `${row.repayTime}${this.$filter(val, this.$enum.TERM_UNIT, this.$enum.TERM_UNIT)}`"></el-table-column>
         <el-table-column prop="repayWay" label="还款方式"
                          :formatter="(row, col, val) => (this.$filter(val, this.$enum.REPAY_WAY, this.$enum.REPAY_WAY))"></el-table-column>
-        <el-table-column prop="raiseFromDate" label="募集期" width="100"
-                         :formatter="(row, col, value) => (value || row.raiseThruDate) ? `${value || '?'} ~ ${row.raiseThruDate || '?'}` : '不限'"></el-table-column>
-        <el-table-column prop="status" label="状态"
-                         :formatter="(row, col, val) => (this.$filter(val, this.$enum.LOAN_STATUS, this.$enum.LOAN_STATUS_GROUP))"></el-table-column>
         <el-table-column prop="appliedTime" label="申请日期" width="85"></el-table-column>
+        <el-table-column label="状态" align="center" width="100" fixed="right">
+          <template slot-scope="scope">
+            <el-tag :type="$enum.LOAN_STATUS_COLOR_MAP[scope.row.status]">
+              {{ $filter(scope.row.status, $enum.LOAN_STATUS, $enum.LOAN_STATUS_GROUP) }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="备注" fixed="right">
           <template slot-scope="scope">
-            {{scope.row.remarks}}<br>
+            {{ scope.row.remarks ? scope.row.remarks.split(':')[0] : '' }}<br>
             <el-tooltip content="查看备注">
               <el-button size="mini" icon="fa fa-ellipsis-h"
                          @click="handleNoteDetail(scope.row)"></el-button>
@@ -123,10 +128,9 @@
     </el-row>
     <!--分页-->
     <el-row type="flex" justify="center" class="mgt20">
-      <el-pagination @current-change="getList"
-                     :page-size="search.pageSize"
-                     layout="prev, next"
-                     :total="totalRecord"></el-pagination>
+      <el-pagination :total="totalRecord" :page-size="search.pageSize"
+                     layout="total, prev, pager, next, jumper, sizes" :page-sizes="[20, 50, 100]"
+                     @current-change="getData" @size-change="handlePageSizeChange"></el-pagination>
     </el-row>
   </div>
 </template>
@@ -134,9 +138,12 @@
 <script>
   import { getAssetInfoList, getRemarkList, downloadAssetInfoList } from '../../api/asset';
 
+  const statusSequence = [1, 3, 5, 6, 8, 10, 12, 14, 15];
+
   export default {
     data() {
       return {
+        statusSequence,
         list: [],
         totalRecord: 0,
         search: {
@@ -145,8 +152,7 @@
           appliedEndTime: this.$dateStringify(new Date()),
           assetRiskLevel: '',
           assetKind: '',
-          loanKind: '',
-          statusCount: this.$arrayToBinary([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15]),
+          statusCount: this.$arrayToBinary(statusSequence),
           otherParams: '',
           pageNumber: 1,
           pageSize: 20
@@ -195,21 +201,25 @@
           if (val) {
             this.assetStatusList = [this.$enum.LOAN_STATUS_LIST.indexOf(val)]
           } else {
-            this.assetStatusList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15]
+            this.assetStatusList = statusSequence
           }
         }
       }
     },
     created() {
-      this.getList(1);
+      this.getData(1);
     },
     methods: {
-      handleDownload(){
+      handleDownload() {
         const search = this.$deepcopy(this.search);
         this.$download(downloadAssetInfoList(search), this.$store);
       },
       handleSearch() {
-        this.getList(1);
+        this.getData(1);
+      },
+      handlePageSizeChange(size) {
+        this.search.pageSize = size;
+        this.getData(this.search.pageNumber)
       },
       handleDetail(row) {
         this.$router.push({
@@ -240,7 +250,7 @@
         }, () => {
         })
       },
-      getList(index) {
+      getData(index) {
         const search = this.$objFilter(this.$deepcopy(this.search), _ => _ !== '');
         search.pageNumber = index;
         getAssetInfoList(search).then(response => {

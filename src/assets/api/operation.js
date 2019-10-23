@@ -7,7 +7,7 @@ export const getRepayList = (params) => {
   })
 };
 export const getRepayDetail = (loanApplication) => {
-  return http.assets.get('v1/ppvt/repay/_find-repay-plan', {
+  return http.assets.get('/v2/finance/ppvt/repay', {
     params: {
       loanApplication
     }
@@ -81,4 +81,8 @@ export const changeBindCard = (paymentId, bankCard) => {
     paymentId,
     bankCard
   })
+};
+/** ========== 资产数据统计 =============== **/
+export const getAssetStat = (params) => {
+  return http.assets.post('/v2/loan-count/share', params)
 };

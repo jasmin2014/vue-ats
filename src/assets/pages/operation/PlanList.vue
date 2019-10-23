@@ -19,7 +19,8 @@
         <el-col :span="8">
           <el-form-item label="关键词">
             <el-input v-model="search.otherParams"
-                      placeholder="借贷编号/协议编号/客户姓名/企业名称"></el-input>
+                      placeholder="借款编号/协议编号/客户姓名/企业名称"
+                      clearable></el-input>
           </el-form-item>
         </el-col>
         <el-col :span="3">
@@ -47,8 +48,9 @@
       </el-table>
     </el-row>
     <el-row type="flex" justify="center" class="mgt20">
-      <el-pagination layout="prev, next" :total="pageTotal" :page-size="search.pageSize"
-                     @current-change="getData"></el-pagination>
+      <el-pagination :total="pageTotal" :page-size="search.pageSize"
+                     layout="total, prev, pager, next, jumper, sizes" :page-sizes="[20, 50, 100]"
+                     @current-change="getData" @size-change="handlePageSizeChange"></el-pagination>
     </el-row>
   </div>
 </template>
@@ -69,7 +71,7 @@
         list: [],
         table: [
           {
-            label: '借贷编号',
+            label: '借款编号',
             prop: 'loanApplicationNo'
           },
           {
@@ -87,7 +89,7 @@
           },
           {
             label: '资金端',
-            prop: 'raisePartyOrgName'
+            prop: 'fundOrgName'
           },
           {
             label: '资产类型',
@@ -96,8 +98,13 @@
           },
           {
             label: '项目名称',
-            prop: 'loanKind',
+            prop: 'projectName',
             formatter: (row, col, value) => this.$filter(value, this.$enum.LOAN_TYPE, row.assetKind)
+          },
+          {
+            label: '业务类型',
+            prop: 'projectType',
+            formatter: (row, col, value) => this.$filter(value, this.$enum.PROJECT_TYPE, this.$enum.PROJECT_TYPE)
           },
           {
             label: '还款方式',
@@ -164,6 +171,10 @@
       handleDownload() {
         const search = this.$deepcopy(this.search);
         this.$download(downloadRepayList(search), this.$store)
+      },
+      handlePageSizeChange(size) {
+        this.search.pageSize = size;
+        this.getData(this.search.pageNumber)
       },
       getData(index) {
         const search = this.$objFilter(this.$deepcopy(this.search), _ => _ !== '');

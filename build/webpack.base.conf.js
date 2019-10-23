@@ -12,9 +12,7 @@ module.exports = {
     assets: './src/assets/main.js',
     funds: './src/funds/main.js',
     center: './src/center/main.js',
-    account: './src/account/main.js',
-    chain_assets: './src/chain-assets/main.js',
-    chain_funds: './src/chain-funds/main.js',
+    account: './src/account/main.js'
   },
   output: {
     path: config.build.assetsRoot,

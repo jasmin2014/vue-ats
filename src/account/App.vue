@@ -4,15 +4,15 @@
       <div class="container">
         <div class="logo">
           <a href="#">
-            <img src="../pages/img/logo.png" alt="开放平台">
+            <img v-if="logoType === 'tfabric'" src="../pages/img/logo.png" alt="">
+            <img v-else-if="logoType === 'trc'" src="../pages/img/logo_trc.png" alt="">
+            <img v-else-if="logoType === 'lawcert'" src="../pages/img/logo_lawcert.png" alt="">
+            <img v-else src="../pages/img/logo.png" alt="">
           </a>
         </div>
         <div class="btn-group">
           <router-link :to="{ name: 'Login' }"
-                       tag="button"
-                       class="plain-btn">登录</router-link>
-          <a href="#"
-             class="home-btn">返回首页</a>
+                       class="home-btn">登录</router-link>
         </div>
       </div>
     </div>
@@ -21,8 +21,29 @@
 </template>
 
 <script>
+  let logoType;
+  switch (location.hostname) {
+    case 'ats.tfabric.com':
+      logoType = 'tfabric';
+      break;
+    case 'ats.trc.com':
+      logoType = 'trc';
+      break;
+    case 'ats.lawcert.com':
+      logoType = 'lawcert';
+      break;
+    default:
+      logoType = 'tfabric';
+      break;
+  }
+
   export default {
-    name: 'app'
+    name: 'app',
+    data() {
+      return {
+        logoType
+      }
+    }
   }
 </script>
 
@@ -123,7 +144,7 @@
 
       section {
         position: relative;
-        min-height: 60px;
+        height: 44px;
         font-size: 16px;
 
         input {
@@ -157,6 +178,10 @@
               box-shadow: 0 3px 3px rgba(0, 80, 255, 0.3);
             }
           }
+        }
+
+        & + section {
+          margin-top: 22px;
         }
       }
     }

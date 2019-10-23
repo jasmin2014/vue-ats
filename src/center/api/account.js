@@ -32,15 +32,6 @@ export const getMenu = () => {
             auth: true
           }]
         });
-        if (NODE_ENV === 'development') {
-          routes[0].children.push({
-            url: 'menu-setting',
-            name: 'MenuSetting',
-            tname: '菜单设置',
-            structureType: 'PAGE',
-            auth: true
-          });
-        }
         routes = Utils.$menuTransformer(routes, routeMap);
         routes.push({
           path: '*',
@@ -74,34 +65,18 @@ export const getRoleList = (params) => {
     params
   })
 };
-export const getRoleDetail = (roleId, code) => {
-  return http.center.get(`v1/role/detail/${roleId}`, {
-    headers: {
-      'X-Action-Code': code
-    }
-  })
+export const getRoleDetail = (roleId) => {
+  return http.center.get(`v1/role/detail/${roleId}`)
 };
 export const createRole = (data) => {
-  return http.center.post('v1/role', data, {
-    headers: {
-      'X-Action-Code': window.__buttons['AccountRoleCreate']
-    }
-  })
+  return http.center.post('v1/role', data)
 };
 export const editRole = (roleId, data) => {
   data.roleId = roleId;
-  return http.center.put('v1/role', data, {
-    headers: {
-      'X-Action-Code': window.__buttons['AccountRoleEdit']
-    }
-  })
+  return http.center.put('v1/role', data)
 };
 export const deleteRole = (roleId) => {
-  return http.center.delete(`v1/role/${roleId}`, {
-    headers: {
-      'X-Action-Code': window.__buttons['AccountRoleDelete']
-    }
-  })
+  return http.center.delete(`v1/role/${roleId}`)
 };
 
 /** ======================= 用户 ===================== **/
@@ -110,34 +85,18 @@ export const getUserList = (params) => {
     params
   })
 };
-export const getUserDetail = (id, code) => {
-  return http.center.get(`v1/login/user/detail/${id}`, {
-    headers: {
-      'X-Action-Code': code
-    }
-  })
+export const getUserDetail = (id) => {
+  return http.center.get(`v1/login/user/detail/${id}`)
 };
 export const createUser = (data) => {
-  return http.center.post('v1/login/user', data, {
-    headers: {
-      'X-Action-Code': window.__buttons['AccountUserCreate']
-    }
-  })
+  return http.center.post('v1/login/user', data)
 };
 export const editUser = (id, data) => {
   data.partyId = id;
-  return http.center.put('v1/login/user', data, {
-    headers: {
-      'X-Action-Code': window.__buttons['AccountUserEdit']
-    }
-  })
+  return http.center.put('v1/login/user', data)
 };
 export const deleteUser = (partyId) => {
-  return http.center.delete(`v1/login/user/${partyId}`, {
-    headers: {
-      'X-Action-Code': window.__buttons['AccountUserDelete']
-    }
-  })
+  return http.center.delete(`v1/login/user/${partyId}`)
 };
 export const getRoleListByOrg = (orgManagerId, appId) => {
   return http.center.get(`v1/role/list/by/org/${orgManagerId}`, {
@@ -146,20 +105,13 @@ export const getRoleListByOrg = (orgManagerId, appId) => {
     }
   })
 };
-export const getRoleListByUser = (partyId, code) => {
-  return http.center.get(`v1/user/role/list/${partyId}`, {
-    headers: {
-      'X-Action-Code': code
-    }
-  })
+export const getRoleListByUser = (partyId) => {
+  return http.center.get(`v1/user/role/list/${partyId}`)
 };
-export const saveUserRole = (partyId, roleIdList, code) => {
+export const saveUserRole = (partyId, roleIdList) => {
   return http.center.post('v1/user/role', roleIdList, {
     params: {
       partyId
-    },
-    headers: {
-      'X-Action-Code': code
     }
   })
 };

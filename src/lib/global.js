@@ -3,6 +3,7 @@ import GlobalComponent from './component'
 import GlobalDirective from './directive'
 import GlobalMethod from './method'
 import GlobalRegExp from './validation'
+import GlobalEncoder from './encoder'
 
 function install(Vue) {
   /* =====全局枚举===================================== */
@@ -10,6 +11,9 @@ function install(Vue) {
 
   /* =====全局校验===================================== */
   Vue.prototype.$valid = GlobalRegExp;
+
+  /* =====全局脱敏===================================== */
+  Vue.prototype.$encoder = GlobalEncoder;
 
   /* =====全局组件===================================== */
   GlobalComponent.forEach(component => {

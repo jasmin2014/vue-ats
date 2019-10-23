@@ -4,8 +4,9 @@
                   :start-placeholder="startPlaceholder"
                   :end-placeholder="endPlaceholder"
                   :picker-options="pickerOptions"
-                  value-format="yyyy-MM-dd"
-                  :clearable="false"
+                  :value-format="valueFormat"
+                  :clearable="clearable"
+                  :align="align"
                   unlink-panels
                   @input="handleInput"
                   @change="handleChange"
@@ -26,6 +27,15 @@
       },
       shortcuts: {
         type: Array
+      },
+      align: String,
+      valueFormat: {
+        type: String,
+        default: 'yyyy-MM-dd'
+      },
+      clearable: {
+        type: Boolean,
+        default: false
       }
     },
     data() {

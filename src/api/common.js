@@ -7,7 +7,7 @@ export const getPicUrls = (uris) => {
   return http.common.post('v1/storage/urls', uris)
 };
 export const postQiniu = (val) => {
-  return http.common.post('http://upload.qiniu.com/', val, {
+  return http.common.post(QINIU_UPLOAD_URL, val, {
     headers: {
       'Content-Type': 'multipart/form-data',
       'Authorization': undefined
@@ -60,4 +60,8 @@ export const delFile = (id) => {
 // 根据组织名称查询组织信息
 export const getOrgDetailByName = (orgName) => {
   return http.common.get(`/v1/org/enterprise/detail/${orgName}`)
+};
+// 风控报告后缀
+export const getReportUrlSuffix = () => {
+  return http.common.get('/v2/risk/report')
 };

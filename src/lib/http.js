@@ -2,16 +2,19 @@ import axios from 'axios';
 import {Loading} from 'element-ui';
 import Handler from './http_handler';
 
+// http请求拦截器
+let loadingInstance;
+// 多个请求loading计数器避免请求时间不同导致加载提示提前结束
+let ajaxCount = 0;
+
 function createHttpInstance(baseURL) {
   const http = axios.create({
     baseURL: '/api/' + baseURL,
-    timeout: 30000
+    timeout: 60000
   });
 
-  // http请求拦截器
-  let loadingInstance;
-
   http.interceptors.request.use(config => {
+    ajaxCount++;
     // element ui Loading方法
     if (!loadingInstance || !document.querySelector('.el-loading-mask')) {
       loadingInstance = window.loadingInstance = Loading.service({
@@ -27,21 +30,28 @@ function createHttpInstance(baseURL) {
     }
     return Handler.requestSuccessHandler(config);
   }, () => {
-    setTimeout(() => {
-      loadingInstance.close();
-    });
+    if (--ajaxCount === 0) {
+      setTimeout(() => {
+        loadingInstance.close();
+      });
+    }
     return Handler.requestErrorHandler();
   });
   // http响应拦截器
+  // http响应拦截器
   http.interceptors.response.use(response => { // 响应成功关闭loading
-    setTimeout(() => {
-      loadingInstance.close();
-    });
+    if (--ajaxCount === 0) {
+      setTimeout(() => {
+        loadingInstance.close();
+      });
+    }
     return Handler.responseSuccessHandler(response);
   }, error => {
-    setTimeout(() => {
-      loadingInstance.close();
-    });
+    if (--ajaxCount === 0) {
+      setTimeout(() => {
+        loadingInstance.close();
+      });
+    }
     return Handler.responseErrorHandler(error);
   });
   return http;
@@ -52,7 +62,5 @@ export default {
   center: createHttpInstance('center/'),
   assets: createHttpInstance('assets/'),
   funds: createHttpInstance('funds/'),
-  chain: createHttpInstance('chain/'),
-  chainAssets: createHttpInstance('chain-assets/'),
-  chainFunds: createHttpInstance('chain-funds/')
+  schedule: createHttpInstance('schedule/')
 }

@@ -8,6 +8,7 @@ const http = axios.create({
 const appId = APP_ID;// 用户中心appId
 const appSecret = APP_SECRET;// 用户中心appSecret
 const uCenterBaseURL = U_CENTER_BASE_URL;
+const uCenterTenantURL = U_CENTER_TENANT_URL;
 
 // 验证是否本系统用户
 export const checkPhone = (phone) => {
@@ -16,12 +17,20 @@ export const checkPhone = (phone) => {
 
 /** =====================登录================== **/
 // 登录
-export const doLogin = (phone, password) => {
-  return http.post(`${uCenterBaseURL}/login/phone`, {
+export const doLogin = (email, password, encryptFlag = false) => {
+  return http.post(`${uCenterBaseURL}/login/email`, {
     appId,
-    appSecret,
+    email,
     password,
-    phone
+    encryptFlag
+  })
+};
+// 检查账号状态
+export const checkEmail = (email) => {
+  return http.get('/v1/login/user/find/user/status', {
+    params: {
+      email
+    }
   })
 };
 
@@ -34,6 +43,30 @@ export const getUserBusiness = (token) => {
   })
 };
 /** =====================激活/重置================== **/
+// 发送激活/重置邮件
+export const sendEmail = (email, emailType) => {
+  let url = '';
+  if (emailType === 'ACTIVE_USER') {
+    url = '/account/active';
+  } else if (emailType === 'RESET_PASSWORD') {
+    url = '/account/reset';
+  }
+  return http.put(`${uCenterBaseURL}/email`, {
+    appId,
+    email,
+    emailType,
+    url: location.origin + url
+  })
+};
+// 校验设置密码的code
+export const checkCode = (code) => {
+  return http.get(`${uCenterBaseURL}/email`, {
+    params: {
+      code
+    }
+  })
+};
+
 // 发送激活/重置手机验证码
 export const sendCode = (usage, phone, partyId) => {
   return http.post(`${uCenterBaseURL}/mock/send_code`, {
@@ -46,26 +79,27 @@ export const sendCode = (usage, phone, partyId) => {
 };
 
 // 激活
-export const doActivate = (phone, phoneCode, password, fullName) => {
-  return http.post(`${uCenterBaseURL}/register/phone`, {
+export const doActivate = (email, code, password, encryptFlag = false) => {
+  return http.post(`${uCenterBaseURL}/register/active`, {
     appId,
-    appSecret,
+    code,
+    email,
     password,
-    phone,
-    phoneCode,
-    fullName
+    encryptFlag
   })
 };
 
 // 重置密码
-export const doResetPassword = (phone, phoneCode, newPassword) => {
-  return http.put(`${uCenterBaseURL}/password/reset`, {
+export const doResetPassword = (email, code, newPassword, encryptFlag = false) => {
+  return http.put(`${uCenterBaseURL}/password/email_reset`, {
     appId,
-    appSecret,
-    phone,
-    phoneCode,
+    email,
+    code,
     newPassword,
-    encryptFlag: false
+    encryptFlag
   })
 };
 
+export const getPublicKey = () => {
+  return http.get(`${uCenterTenantURL}/app/app_id_ucenter/pub_key`)
+};

@@ -62,6 +62,7 @@
         })
       },
       handleSave(data) {
+        console.log(data);
         this.createOrg(data);
       },
       // handleSearchOrg(keyword) {

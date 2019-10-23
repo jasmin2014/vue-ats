@@ -3,10 +3,19 @@
   <div>
     <el-form class="form-label flex fixed-width">
       <el-row>
+        <el-col :span="5">
+          <el-form-item label="业务端">
+            <el-select v-model="search.orgType" clearable>
+              <el-option :value="1" label="资金端"></el-option>
+              <el-option :value="2" label="资产端"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-col>
         <el-col :span="8">
           <el-form-item label="关键词">
             <el-input v-model="search.searchKey"
-                      placeholder="机构名称/统一社会信用代码/法人姓名"></el-input>
+                      placeholder="机构名称/统一社会信用代码/法人姓名"
+                      clearable></el-input>
           </el-form-item>
         </el-col>
         <el-col :span="3">
@@ -23,7 +32,7 @@
       <el-table :data="list" border>
         <el-table-column v-for="(col, index) in table" :prop="col.prop" :label="col.label" :formatter="col.formatter"
                          :key="index" align="center"></el-table-column>
-        <el-table-column label="操作" width="270px" align="center">
+        <el-table-column label="操作" width="250px" fixed="right" align="center">
           <template slot-scope="scope">
             <el-tooltip v-action="'OrgDetail'"
                         content="查看">
@@ -36,21 +45,16 @@
                          @click="handleEdit(scope.row)"></el-button>
             </el-tooltip>
             <el-tooltip v-action="'OrgEnableOrDisabled'"
-                        v-if="scope.row.enableStatus === 0"
+                        v-if="scope.row.useFlag === 0"
                         content="启用">
               <el-button icon="fa fa-check-square" size="small" type="success"
                          @click="handleStatusChange(scope.row)"></el-button>
             </el-tooltip>
             <el-tooltip v-action="'OrgEnableOrDisabled'"
-                        v-if="scope.row.enableStatus === 1"
+                        v-if="scope.row.useFlag === 1"
                         content="禁用">
               <el-button icon="fa fa-window-close" size="small" type="warning"
                          @click="handleStatusChange(scope.row)"></el-button>
-            </el-tooltip>
-            <el-tooltip v-action="'OrgDelete'"
-                        content="删除">
-              <el-button icon="el-icon-delete" size="small" type="danger"
-                         @click="handleDelete(scope.row)"></el-button>
             </el-tooltip>
           </template>
         </el-table-column>
@@ -59,23 +63,20 @@
 
     <!--分页-->
     <el-row type="flex" justify="center" class="mgt20">
-      <el-pagination @current-change="getData"
-                     :current-page="search.pageNumber"
-                     :page-size="search.pageSize"
-                     layout="prev, next"
-                     :total="totalRecord"></el-pagination>
+      <el-pagination :total="totalRecord" :page-size="search.pageSize"
+                     layout="total, prev, pager, next, jumper, sizes" :page-sizes="[20, 50, 100]"
+                     @current-change="getData" @size-change="handlePageSizeChange"></el-pagination>
     </el-row>
   </div>
 </template>
 
 <script>
-  import {getOrgList, switchOrgStatus, orgDelete} from '../../api/org'
+  import {getOrgList, switchOrgStatus} from '../../api/org'
 
   export default {
     data() {
       return {
         totalRecord: 0,
-        visible2: false,
         search: {
           pageNumber: 1,
           pageSize: 20
@@ -83,12 +84,21 @@
         list: [],
         table: [
           {
+            label: 'ID',
+            prop: 'id'
+          },
+          {
             label: '机构编号',
             prop: 'partyNo'
           },
           {
             label: '机构名称',
             prop: 'orgName'
+          },
+          {
+            label: '业务端',
+            prop: 'orgType',
+            formatter: (row, col, val) => (val == 1 ? '资金端' : (val == 2 ? '资产端' : ''))
           },
           {
             label: '统一社会信用代码',
@@ -104,11 +114,11 @@
           },
           {
             label: '相关联系人',
-            prop: 'contactName'
+            prop: 'contactPartyName'
           },
           {
             label: '手机号码',
-            prop: 'mobile'
+            prop: 'contactPartyMobile'
           },
           {
             label: '创建时间',
@@ -120,7 +130,7 @@
           },
           {
             label: '状态',
-            prop: 'enableStatus',
+            prop: 'useFlag',
             formatter: (row, col, value) => this.$filterBoolean(value, '启用', '禁用')
           }
         ]
@@ -133,11 +143,15 @@
       handleSearch() {
         this.getData(1);
       },
+      handlePageSizeChange(size) {
+        this.search.pageSize = size;
+        this.getData(this.search.pageNumber)
+      },
       handleCreate() {
         this.$router.push({ name: 'OrgCreate' });
       },
       handleDetail(row) {
-        this.$router.push({ name: 'OrgDetail', params: { id: row.partyId } });
+        this.$router.push({ name: 'OrgDetail', params: { id: row.id } });
       },
       handleEdit(row) {
         // if (row.status === '1') {
@@ -146,28 +160,16 @@
         //   });
         //   return;
         // }
-        this.$router.push({ name: 'OrgEdit', params: { id: row.partyId } });
+        this.$router.push({ name: 'OrgEdit', params: { id: row.id } });
       },
       handleStatusChange(row) {
-        this.$confirm(`确定${row.enableStatus == 1 ? '禁用' : '启用'}该机构吗?`, '提示', {
+        this.$confirm(`确定${row.useFlag == 1 ? '禁用' : '启用'}该机构吗?`, '提示', {
           type: 'warning'
         }).then(() => {
-          this.changeStatus(row.partyId, row.enableStatus == 1 ? '0' : '1');
+          this.changeStatus(row.id, row.useFlag == 1 ? '0' : '1');
         });
       },
-      handleDelete(row) {
-        // if (row.status === '1') {
-        //   this.$alert('请先禁用该机构', '提示', {
-        //     type: 'warning'
-        //   });
-        //   return;
-        // }
-        this.$confirm('确定删除吗?', '提示', {
-          type: 'warning'
-        }).then(() => {
-          this.deleteOrg(row.partyId);
-        });
-      },
+
       getData(pageNumber) {
         const search = this.$deepcopy(this.search);
         search.pageNumber = pageNumber;
@@ -196,22 +198,6 @@
             this.$message({
               type: 'success',
               message: '操作成功!'
-            });
-          }
-        }, () => {
-          this.getData(this.search.pageNumber);
-        })
-      },
-      // 删除
-      deleteOrg(relId) {
-        orgDelete(relId).then(response => {
-          if (response.status === 204) {
-            setTimeout(() => {
-              this.getData(this.search.pageNumber);
-            }, 1000);
-            this.$message({
-              type: 'success',
-              message: '删除成功!'
             });
           }
         }, () => {

@@ -1,202 +1,175 @@
 <template>
   <customer v-model="detail"
-            :mode="mode"
+            :customer="customer"
+            :props="props"
             :type="type"
-            :end="this.$enum.BUSINESS_ASSET"></customer>
+            :page-size="params.pageSize"
+            :page-number="params.pageNumber"
+            :total-record="pageTotal"
+            @loan-change="handleLoanChange"
+            @size-change="handlePageSizeChange"
+            @current-change="handleCurrentChange"></customer>
 </template>
 
 <script>
   import Customer from '../../../modules/customer/Customer.vue'
   import {
+    getCustomerLoanList,
+    getPerson,
+    getOrg,
     getIndividualDetail,
-    getEnterpriseDetail,
-    getEnterpriseLegalDetail,
-    getCustomerPropList,
-    getCustomerEquipmentList,
-    getCustomerShopList,
-    getCustomerEshopList,
-    getCustomerInsuranceList,
-    getCustomerStockList,
-    getCustomerDebtList,
-    getCustomerOrgList,
-    getCustomerRelList,
-    getCustomerMaterialList
+    getEnterpriseDetail
   } from '../../api/customer'
+  import {
+    getProofMaterialList
+  } from '../../api/asset'
 
   export default {
     data() {
       return {
         mode: 'VIEW',
         detail: {},
-        id: this.$route.params.id,
+        customer: {},
+        props: {},
+        params: {
+          pageSize: 20,
+          pageNumber: 1
+        },
+        pageTotal: 0,
+        loanPartyId: this.$route.params.id, // uniqueId
+        customerNo: this.$route.query.id, // 客户编号
         type: this.$route.query.type
       }
     },
     created() {
-      this.getData(this.id);
+      this.getCustomerBase(this.customerNo);
     },
     methods: {
-      getData(id) {
-        this.getCustomer(id).then(({ type, data }) => {
-          if (type === this.$enum.SUBJECT_PROP_PERSON) {
-            this.$set(this.detail, 'personNo', data.personNo);
-            this.$set(this.detail, 'base', data);
-            if (data.partyId) {
-              this.getProps(id);
-              this.getShops(id);
-              this.getEshops(id);
-              this.getDebts(id);
-              this.getInsurances(id);
-              this.getOrgs(id);
-              this.getRels(id);
-              this.getMaterials(id, type)
+      handleLoanChange(loanId) {
+        if (loanId) {
+          this.getLoanCustomerDetail(loanId);
+        } else {
+          this.customer = {};
+        }
+      },
+      handleCurrentChange(index) {
+        this.getCustomerLoanList(index, this.loanPartyId);
+      },
+      handlePageSizeChange(pageSize) {
+        this.params.pageSize = pageSize;
+        this.getCustomerLoanList(this.params.pageNumber, this.loanPartyId)
+      },
+
+      getCustomerLoanList(index, id) {
+        const search = this.$deepcopy(this.params);
+        search.pageNumber = index;
+        getCustomerLoanList(id).then(({ data }) => {
+          if (data.code === 200) {
+            this.$set(this.detail, 'loanList', data.body.list);
+            this.params.pageNumber = index;
+            this.pageTotal = data.body.totalRecord;
+          } else {
+            this.$set(this.detail, 'loanList', []);
+            this.pageTotal = 0;
+          }
+        }).catch((e) => {
+          this.$set(this.detail, 'loanList', []);
+          this.pageTotal = 0;
+        })
+      },
+      getCustomerBase(id) {
+        let promise = {};
+        if (this.type === this.$enum.SUBJECT_PROP_PERSON) {
+          promise = getPerson(id)
+        } else if (this.type === this.$enum.SUBJECT_PROP_ORGANIZE) {
+          promise = getOrg(id)
+        }
+
+        promise.then(({ data }) => {
+          if (data.code === 200) {
+            this.detail = data.body;
+            this.getCustomerLoanList(1, this.loanPartyId);
+          }
+        })
+      },
+      getLoanCustomerDetail(loanId) {
+        let promise = {};
+        switch (this.type) {
+          case this.$enum.SUBJECT_PROP_PERSON:
+            promise = getIndividualDetail(loanId);
+            break;
+          case this.$enum.SUBJECT_PROP_ORGANIZE:
+            promise = getEnterpriseDetail(loanId);
+            break;
+        }
+        promise.then(({ data }) => {
+          if (data.code === 200) {
+            if (data.body) {
+              data.body.personDebtInformationList = null;
+              data.body.creditDataDTO = null;
+              data.body.involvedAppealDTO = null;
+              this.customer = data.body;
+              this.$set(this.props, 'propCarDTO', data.body.propCarDTO);
+              this.$set(this.props, 'propHouseDTO', data.body.propHouseDTO);
+              this.$set(this.props, 'propDeviceDTO', data.body.propDeviceDTO);
+              this.$set(this.props, 'propShopDTO', data.body.propShopDTO);
+              this.$set(this.props, 'propElectronicCommerceDTO', data.body.propElectronicCommerceDTO);
+              this.$set(this.props, 'propPublicReserveFunds', data.body.propPublicReserveFunds);
+              this.getMaterialList(loanId, this.type);
             }
           } else {
-            this.$set(this.detail, 'partyNo', data.partyNo);
-            this.$set(this.detail, 'base', data);
-            if (data.partyId) {
-              this.$set(this.detail, 'business', data);
-              this.getLegalParty(id);
-              this.getProps(id);
-              this.getEquipments(id);
-              this.getShops(id);
-              this.getEshops(id);
-              this.getStocks(id);
-              this.getDebts(id);
-              this.getMaterials(id, type)
-            }
+            this.$message.error(data.message);
           }
-        }, () => {})
+        }).catch((e) => {
+          console.error(e)
+        });
       },
-      getCustomer(id) {
-        const type = this.type;
-        if (type === this.$enum.SUBJECT_PROP_PERSON) {
-          return new Promise((resolve) => {
-            getIndividualDetail(id).then(({ data }) => {
-              if (data.code === 200) {
-                resolve({
-                  type,
-                  data: data.body
-                });
-              }
-            }, () => {})
-          })
-        } else if (type === this.$enum.SUBJECT_PROP_ORGANIZE) {
-          return new Promise((resolve) => {
-            getEnterpriseDetail(id).then(({ data }) => {
-              if (data.code === 200) {
-                resolve({
-                  type,
-                  data: data.body
-                });
-              }
-            }, () => {})
-          })
-        }
-      },
-      getLegalParty(partyId) {
-        getEnterpriseLegalDetail(partyId).then(({ data }) => {
+      getMaterialList(loanId, type) {
+        getProofMaterialList(loanId).then(({ data }) => {
           if (data.code === 200) {
-            this.$set(this.detail, 'legal', data.body)
-          }
-        }, () => {})
-      },
-      getProps(id, type) {
-        const typeMap = {
-          bank: 'B',
-          car: 'C',
-          house: 'H',
-          'public': 'G'
-        };
-        getCustomerPropList(id, type ? typeMap[type] : 'B,C,H,G').then(({ data }) => {
-          if (data.code === 200) {
-            if (type) {
-              this.$set(this.detail, `${type}List`, data.body)
-            } else {
-              const props = data.body.reduce((result, item) => {
-                result[item.propType].push(item);
-                return result
-              }, { CAR: [], BANK_CARD: [], HOUSE_ESTATE: [], PUBLIC_RESERVE_FUNDS: [] });
-              this.$set(this.detail, 'bankList', props.BANK_CARD);
-              this.$set(this.detail, 'houseList', props.HOUSE_ESTATE);
-              if (this.type === this.$enum.SUBJECT_PROP_PERSON) {
-                this.$set(this.detail, 'carList', props.CAR);
-                this.$set(this.detail, 'publicList', props.PUBLIC_RESERVE_FUNDS);
+            const materials = data.body && data.body.loanMaterials;
+            if (materials) {
+              switch (type) {
+                case this.$enum.SUBJECT_PROP_PERSON:
+                  if (materials[this.$enum.PROOF_MATERIAL_P_ID_CARD]) {
+                    this.$set(this.customer, 'materials', materials[this.$enum.PROOF_MATERIAL_P_ID_CARD] || []);
+                  }
+                  break;
+                case this.$enum.SUBJECT_PROP_ORGANIZE:
+                  let list = [];
+                  if (materials[this.$enum.PROOF_MATERIAL_O_LICENSE]) {
+                    list = list.concat(materials[this.$enum.PROOF_MATERIAL_O_LICENSE])
+                  }
+                  if (materials[this.$enum.PROOF_MATERIAL_O_OTHER]) {
+                    list = list.concat(materials[this.$enum.PROOF_MATERIAL_O_OTHER])
+                  }
+                  this.$set(this.customer, 'materials', list);
+                  break;
+              }
+
+              if (this.props.propCarDTO && materials[this.$enum.CUSTOMER_PROP_CAR]) {
+                this.$set(this.props.propCarDTO, 'materials', materials[this.$enum.CUSTOMER_PROP_CAR] || []);
+              }
+
+              if (this.props.propHouseDTO && materials[this.$enum.CUSTOMER_PROP_HOUSE]) {
+                this.$set(this.props.propHouseDTO, 'materials', materials[this.$enum.CUSTOMER_PROP_HOUSE] || []);
+              }
+
+              if (this.props.propDeviceDTO && materials[this.$enum.CUSTOMER_PROP_DEVICE]) {
+                this.$set(this.props.propDeviceDTO, 'materials', materials[this.$enum.CUSTOMER_PROP_DEVICE] || []);
+              }
+
+              if (this.props.propShopDTO && materials[this.$enum.CUSTOMER_PROP_SHOP]) {
+                this.$set(this.props.propShopDTO, 'materials', materials[this.$enum.CUSTOMER_PROP_SHOP] || []);
+              }
+
+              if (this.props.propElectronicCommerceDTO && materials[this.$enum.CUSTOMER_PROP_ESHOP]) {
+                this.$set(this.props.propElectronicCommerceDTO, 'materials', materials[this.$enum.CUSTOMER_PROP_ESHOP] || []);
               }
             }
           }
         }, () => {})
       },
-      getEquipments(id) {
-        getCustomerEquipmentList(id).then(({ data }) => {
-          if (data.code === 200) {
-            this.$set(this.detail, 'equipmentList', data.body);
-          }
-        }, () => {})
-      },
-      getShops(id) {
-        getCustomerShopList(id).then(({ data }) => {
-          if (data.code === 200) {
-            this.$set(this.detail, 'shopList', data.body)
-          }
-        }, () => {})
-      },
-      getEshops(id) {
-        getCustomerEshopList(id).then(({ data }) => {
-          if (data.code === 200) {
-            this.$set(this.detail, 'eshopList', data.body)
-          }
-        }, () => {})
-      },
-      getStocks(id) {
-        getCustomerStockList(id).then(({ data }) => {
-          if (data.code === 200) {
-            this.$set(this.detail, 'stockList', data.body);
-          }
-        }, () => {})
-      },
-      getDebts(id) {
-        getCustomerDebtList(id).then(({ data }) => {
-          if (data.code === 200) {
-            this.$set(this.detail, 'debtList', data.body)
-          }
-        }, () => {})
-      },
-      getInsurances(id) {
-        getCustomerInsuranceList(id).then(({ data }) => {
-          if (data.code === 200) {
-            this.$set(this.detail, 'insuranceList', data.body)
-          }
-        }, () => {})
-      },
-      getOrgs(id) {
-        getCustomerOrgList(id).then(({ data }) => {
-          if (data.code === 200) {
-            this.$set(this.detail, 'orgList', data.body)
-          }
-        }, () => {})
-      },
-      getRels(id) {
-        getCustomerRelList(id).then(({ data }) => {
-          if (data.code === 200) {
-            this.$set(this.detail, 'familyList', data.body.families || []);
-            this.$set(this.detail, 'friendList', data.body.friends || []);
-          }
-        }, () => {})
-      },
-      getMaterials(id, type) {
-        let kinds = [];
-        if (type === this.$enum.SUBJECT_PROP_PERSON) {
-          kinds = kinds.concat([this.$enum.PROOF_MATERIAL_P_ID_CARD, this.$enum.PROOF_MATERIAL_P_ID_CARD_BACK])
-        } else {
-          kinds = kinds.concat([this.$enum.PROOF_MATERIAL_O_LICENSE, this.$enum.PROOF_MATERIAL_O_OTHER])
-        }
-        getCustomerMaterialList(id, kinds).then(({ data }) => {
-          if (data.code === 200) {
-            this.$set(this.detail, 'materialList', data.body)
-          }
-        }, () => {})
-      }
     },
     components: {
       Customer

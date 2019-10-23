@@ -26,7 +26,11 @@ export const getRepayList = (params) => {
 };
 // 还款详情
 export const repayDetail = (loanApplication) => {
-  return http.center.get(`/v1/ppvt/repay/_find-repay-plan?loanApplication=${loanApplication}`)
+  return http.center.get('/v2/finance/ppvt/repay', {
+    params: {
+      loanApplication
+    }
+  })
 };
 // 还款下载
 export const downloadRepayList = (params) => {
@@ -64,4 +68,9 @@ export const downloadShouldRepayBillList = (params) => {
       'X-Action-Code': window.__buttons['OperationPlannedBillDownload']
     }
   })
+};
+
+/** ========== 资产数据统计 =============== **/
+export const getAssetStat = (params) => {
+  return http.center.post('/v2/center-statistics/statistics-loan', params)
 };

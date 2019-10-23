@@ -3,8 +3,29 @@
     <el-form class="form-label flex fixed-width">
       <el-row>
         <el-col :span="5">
+          <el-form-item label="业务端">
+            <ats-select v-model="appId"
+                        :kind="this.$enum.BUSINESS"
+                        :group="this.$enum.BUSINESS"
+                        placeholder="选择业务端"
+                        clearable>
+            </ats-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="5">
+          <el-form-item label="机构">
+            <ats-select v-model="search.orgId"
+                        :org="appId || this.$enum.BUSINESS_ALL"
+                        :disabled-method="() => false"
+                        placeholder="选择机构"
+                        clearable>
+            </ats-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="5">
           <el-form-item label="关键词">
-            <el-input v-model="search.realName" placeholder="真实姓名"></el-input>
+            <el-input v-model="search.realName" placeholder="真实姓名"
+                      clearable></el-input>
           </el-form-item>
         </el-col>
         <el-col :span="3">
@@ -44,8 +65,9 @@
       </el-table-column>
     </el-table>
     <el-row type="flex" justify="center" class="mgt20">
-      <el-pagination layout="prev, next" :total="pageTotal" :page-size="search.pageSize"
-                     @current-change="getData"></el-pagination>
+      <el-pagination :total="pageTotal" :page-size="search.pageSize"
+                     layout="total, prev, pager, next, jumper, sizes" :page-sizes="[20, 50, 100]"
+                     @current-change="getData" @size-change="handlePageSizeChange"></el-pagination>
     </el-row>
     <!-- 账号操作：添加，编辑，查看 -->
     <el-dialog :title="dialogTitle"
@@ -81,6 +103,7 @@
   export default {
     data() {
       return {
+        appId: '',
         search: {
           pageSize: 20,
           currentPage: 1
@@ -89,8 +112,13 @@
         list: [],
         table: [
           {
+            label: '业务端',
+            prop: 'orgType',
+            formatter: (row, col, val) => (val == 1 ? '资金端' : (val == 2 ? '资产端' : '资产中心'))
+          },
+          {
             label: '机构名',
-            prop: 'orgMgrName'
+            prop: 'orgName'
           },
           {
             label: '真实姓名',
@@ -130,6 +158,27 @@
         return (titleMap[this.mode] || '') + '用户'
       }
     },
+    watch: {
+      appId(val, oldVal) {
+        if (val !== oldVal) {
+          switch (val) {
+            case this.$enum.BUSINESS_FUND:
+              this.search.orgType = 1;
+              break;
+            case this.$enum.BUSINESS_ASSET:
+              this.search.orgType = 2;
+              break;
+            case this.$enum.BUSINESS_CENTER:
+              this.search.orgType = 4;
+              break;
+            default:
+              this.search.orgType = null;
+              break;
+          }
+        }
+      }
+    },
+
     created() {
       this.getData(1)
     },
@@ -137,19 +186,23 @@
       handleSearch() {
         this.getData(1)
       },
+      handlePageSizeChange(size) {
+        this.search.pageSize = size;
+        this.getData(this.search.currentPage)
+      },
       handleDetail(row) {
         this.mode = 'VIEW';
-        this.getDetail(row.partyId);
+        this.getDetail(row.id);
       },
       handleEdit(row) {
         this.mode = 'EDIT';
-        this.getDetail(row.partyId);
+        this.getDetail(row.id);
       },
       handleDelete(row) {
         this.$confirm('确定删除?', '提示', {
           type: 'warning'
         }).then(() => {
-          deleteUser(row.partyId).then(({status}) => {
+          deleteUser(row.id).then(({status}) => {
             if (status === 204) {
               this.$message({
                 type: 'success',
@@ -157,8 +210,9 @@
               });
               this.getData(this.search.currentPage);
             }
+          }).catch(() => {
+            this.getData(this.search.currentPage);
           })
-        }).catch(() => {
         })
       },
       handleCreate() {
@@ -166,16 +220,17 @@
         this.showDialog = true;
       },
       handleSave(val) {
+        console.log(val);
         let promise = {};
         if (this.mode === 'EDIT') {
-          promise = editUser(val.partyId, val)
+          promise = editUser(val.id, val)
         } else if (this.mode === 'CREATE') {
           promise = createUser(val)
         }
         promise.then(({status, data}) => {
           if (status === 200) {
             if (!data.code) {
-              saveUserRole(val.partyId, val.roleIdList,
+              saveUserRole(val.id, val.roleIdList,
                 this.$store.state.buttons['AccountUserEdit']).then(() => {
                 this.$message({
                   type: 'success',
@@ -188,7 +243,7 @@
               this.$message.error(data.message)
             }
           } else if (status === 201) {
-            saveUserRole(data.body.partyId, val.roleIdList,
+            saveUserRole(data.body.id, val.roleIdList,
               this.$store.state.buttons['AccountUserCreate']).then(() => {
               this.$message({
                 type: 'success',
@@ -224,11 +279,11 @@
         this.showDialog = true;
         getUserDetail(id, this.$store.state.buttons[this.mode === 'EDIT' ? 'AccountUserEdit' : 'AccountUserDetail']).then(({data}) => {
           if (data.code === 200) {
-            getRoleListByUser(data.body.partyId, this.$store.state.buttons[this.mode === 'EDIT' ? 'AccountUserEdit' : 'AccountUserDetail']).then((response1) => {
+            getRoleListByUser(data.body.id, this.$store.state.buttons[this.mode === 'EDIT' ? 'AccountUserEdit' : 'AccountUserDetail']).then((response1) => {
               const res1 = response1.data;
               if (res1.code === 200) {
                 data.body.roleIdList = res1.body.map(_ => _.roleId);
-                this.getRoleList(data.body.orgMgrPartyId).then((response) => {
+                this.getRoleList(data.body.orgId).then((response) => {
                   const res = response.data;
                   if (res.code === 200) {
                     this.roleList = res.body;
@@ -271,62 +326,30 @@
                   getRoleListByOrg(orgId, this.$enum.BUSINESS_FUND).then((response3) => {
                     const fundData = response3.data;
                     if (fundData.code === 200) {
-                      getRoleListByOrg(orgId, this.$enum.BUSINESS_CHAIN_ASSET).then((response4) => {
-                        const chainAssetData = response4.data;
-                        if (chainAssetData.code === 200) {
-                          getRoleListByOrg(orgId, this.$enum.BUSINESS_CHAIN_FUND).then((response5) => {
-                            const chainFundData = response5.data;
-                            if (chainFundData.code === 200) {
-                              response5.data.body = [
-                                {
-                                  appId: this.$enum.BUSINESS_CENTER,
-                                  roles: [{
-                                    roleId: undefined,
-                                    roleName: '无'
-                                  }].concat(centerData.body)
-                                },
-                                {
-                                  appId: this.$enum.BUSINESS_ASSET,
-                                  roles: [{
-                                    roleId: undefined,
-                                    roleName: '无'
-                                  }].concat(assetData.body)
-                                },
-                                {
-                                  appId: this.$enum.BUSINESS_FUND,
-                                  roles: [{
-                                    roleId: undefined,
-                                    roleName: '无'
-                                  }].concat(fundData.body)
-                                },
-                                {
-                                  appId: this.$enum.BUSINESS_CHAIN_ASSET,
-                                  roles: [{
-                                    roleId: undefined,
-                                    roleName: '无'
-                                  }].concat(chainAssetData.body)
-                                },
-                                {
-                                  appId: this.$enum.BUSINESS_CHAIN_FUND,
-                                  roles: [{
-                                    roleId: undefined,
-                                    roleName: '无'
-                                  }].concat(chainFundData.body)
-                                }
-                              ];
-                              resolve(response5);
-                            } else {
-                              reject(response5)
-                            }
-                          }).catch((error5) => {
-                            reject(error5)
-                          })
-                        } else {
-                          reject(response4)
+                      response3.data.body = [
+                        {
+                          appId: this.$enum.BUSINESS_CENTER,
+                          roles: [{
+                            roleId: undefined,
+                            roleName: '无'
+                          }].concat(centerData.body)
+                        },
+                        {
+                          appId: this.$enum.BUSINESS_ASSET,
+                          roles: [{
+                            roleId: undefined,
+                            roleName: '无'
+                          }].concat(assetData.body)
+                        },
+                        {
+                          appId: this.$enum.BUSINESS_FUND,
+                          roles: [{
+                            roleId: undefined,
+                            roleName: '无'
+                          }].concat(fundData.body)
                         }
-                      }).catch((error4) => {
-                        reject(error4)
-                      })
+                      ];
+                      resolve(response3);
                     } else {
                       reject(response3)
                     }

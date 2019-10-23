@@ -2,27 +2,34 @@
 import http from '../../lib/http';
 
 /** ================ LIST ======================= **/
-export const getIndividualCustomerList = (params) => {
-  params.currentPage = params.pageNumber;
-  delete params.pageNumber;
-  return http.center.get('v1/person/customer/list/page', {
+export const getIndividualCustomerList = (params, orgId) => {
+  return http.center.get(`/v2/loan-party/person-customer/${orgId}/page`, {
     params
   })
 };
-export const getEnterpriseCustomerList = (params) => {
-  params.searchKeyword = params.searchKey || '';
-  delete params.searchKey;
-  return http.center.get('v1/party/enterprise/page', {
+export const getEnterpriseCustomerList = (params, orgId) => {
+  return http.center.get(`/v2/loan-party/org-customer/${orgId}/page`, {
     params
   })
 };
 
 /** ================ DETAIL ======================= **/
-export const getIndividualDetail = (id) => {
-  return http.center.get(`v1/person/customer/detail/${id}`)
+export const getCustomerLoanList = (partyId, params) => {
+  return http.center.get(`/v2/loan-party/loan-application/${partyId}`, {
+    params
+  })
 };
-export const getEnterpriseDetail = (id) => {
-  return http.center.get(`v1/party/enterprise/${id}`)
+export const getPerson = (id) => {
+  return http.center.get(`/v2/loan-party/person-customer/${id}`)
+};
+export const getOrg = (id) => {
+  return http.center.get(`/v2/loan-party/org-customer/${id}`)
+};
+export const getIndividualDetail = (loanId) => {
+  return http.center.get(`/v2/loan-application-customer/person-customer/${loanId}`)
+};
+export const getEnterpriseDetail = (loanId) => {
+  return http.center.get(`/v2/loan-application-customer/org-customer/${loanId}`)
 };
 export const getEnterpriseLegalDetail = (partyId) => {
   return http.center.get('v1/party/enterprise/_find-enterprise-legal-person', {
@@ -40,6 +47,9 @@ export const getPersonalDataReport = (id, kinds) => {
   })
 };
 /** ================ STATIS ======================= **/
+export const getLoanStat = (assetOrgId, partyId) => {
+  return http.center.get(`/v2/loan-party/loan-statistics/${assetOrgId}/${partyId}`)
+};
 export const getStatistics = (partyId) => {
   return http.center.get(`/v1/party-person/accumulates/_cumulative/${partyId}`)
 };

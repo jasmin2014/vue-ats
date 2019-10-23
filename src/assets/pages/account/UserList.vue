@@ -4,7 +4,8 @@
       <el-row>
         <el-col :span="5">
           <el-form-item label="关键词">
-            <el-input v-model="search.realName" placeholder="真实姓名"></el-input>
+            <el-input v-model="search.realName" placeholder="真实姓名"
+                      clearable></el-input>
           </el-form-item>
         </el-col>
         <el-col :span="5">
@@ -44,8 +45,9 @@
       </el-table-column>
     </el-table>
     <el-row type="flex" justify="center" class="mgt20">
-      <el-pagination layout="prev, next" :total="pageTotal" :page-size="search.pageSize"
-                     @current-change="getData"></el-pagination>
+      <el-pagination :total="pageTotal" :page-size="search.pageSize"
+                     layout="total, prev, pager, next, jumper, sizes" :page-sizes="[20, 50, 100]"
+                     @current-change="getData" @size-change="handlePageSizeChange"></el-pagination>
     </el-row>
     <!-- 账号操作：添加，编辑，查看 -->
     <el-dialog :visible.sync="showDialog"
@@ -89,7 +91,7 @@
         table: [
           {
             label: '机构名',
-            prop: 'orgMgrName'
+            prop: 'orgName'
           },
           {
             label: '真实姓名',
@@ -117,7 +119,9 @@
         mode: '',
         business: this.$enum.BUSINESS_ASSET,
         detail: {
-          orgMgrName: this.$getLocalStorage('user').companyName
+          orgName: this.$getLocalStorage('user').orgName,
+          orgId: this.$getLocalStorage('user').orgId,
+          orgType: this.$getLocalStorage('user').orgType
         },
         roleList: []
       }
@@ -140,19 +144,23 @@
       handleSearch() {
         this.getData(1)
       },
+      handlePageSizeChange(size) {
+        this.search.pageSize = size;
+        this.getData(this.search.currentPage)
+      },
       handleDetail(row) {
         this.mode = 'VIEW';
-        this.getDetail(row.partyId);
+        this.getDetail(row.id);
       },
       handleEdit(row) {
         this.mode = 'EDIT';
-        this.getDetail(row.partyId);
+        this.getDetail(row.id);
       },
       handleDelete(row) {
         this.$confirm('确定删除?', '提示', {
           type: 'warning'
         }).then(() => {
-          deleteUser(row.partyId).then(({status}) => {
+          deleteUser(row.id).then(({status}) => {
             if (status === 204) {
               this.$message({
                 type: 'success',
@@ -160,7 +168,9 @@
               });
               this.getData(this.search.currentPage)
             }
-          }, () => {})
+          }, () => {
+            this.getData(this.search.currentPage)
+          })
         }).catch(() => {})
       },
       handleCreate() {
@@ -169,16 +179,15 @@
       },
       handleSave(val) {
         let promise = {};
-        delete val.orgMgrPartyId;
         if (this.mode === 'EDIT') {
-          promise = editUser(val.partyId, val)
+          promise = editUser(val.id, val)
         } else if (this.mode === 'CREATE') {
           promise = createUser(val)
         }
         promise.then(({status, data}) => {
           if (status === 200) {
             if (!data.code) {
-              saveUserRole(val.partyId, val.roleIdList,
+              saveUserRole(val.id, val.roleIdList,
                 this.$store.state.buttons['AccountUserEdit']).then(() => {
                 this.$message({
                   type: 'success',
@@ -191,7 +200,7 @@
               this.$message.error(data.message)
             }
           } else if (status === 201) {
-            saveUserRole(data.body.partyId, val.roleIdList,
+            saveUserRole(data.body.id, val.roleIdList,
               this.$store.state.buttons['AccountUserCreate']).then(() => {
               this.$message({
                 type: 'success',
@@ -217,7 +226,9 @@
       handleDialogClose() {
         this.mode = '';
         this.detail = {
-          orgMgrName: this.$getLocalStorage('user').companyName
+          orgName: this.$getLocalStorage('user').orgName,
+          orgId: this.$getLocalStorage('user').orgId,
+          orgType: this.$getLocalStorage('user').orgType
         };
         this.$refs.user.clearValidate();
       },
@@ -225,7 +236,7 @@
         this.showDialog = true;
         getUserDetail(id, this.$store.state.buttons[this.mode === 'EDIT' ? 'AccountUserEdit' : 'AccountUserDetail']).then(({data}) => {
           if (data.code === 200) {
-            getRoleListByUser(data.body.partyId, this.$store.state.buttons[this.mode === 'EDIT' ? 'AccountUserEdit' : 'AccountUserDetail']).then((response) => {
+            getRoleListByUser(data.body.id, this.$store.state.buttons[this.mode === 'EDIT' ? 'AccountUserEdit' : 'AccountUserDetail']).then((response) => {
               const res = response.data;
               if (res.code === 200) {
                 data.body.roleIdList = res.body.map(_ => _.roleId);

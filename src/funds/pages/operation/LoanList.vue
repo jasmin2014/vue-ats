@@ -19,7 +19,8 @@
         <el-col :span="8">
           <el-form-item label="关键词">
             <el-input v-model="search.searchKeyword"
-                      placeholder="借贷编号/协议编号/客户姓名/企业名称"></el-input>
+                      placeholder="借款编号/协议编号/客户姓名/企业名称"
+                      clearable></el-input>
           </el-form-item>
         </el-col>
         <el-col :span="3">
@@ -37,23 +38,27 @@
     <el-row>
       <el-table :data="loanData" class='table-center' border>
         <el-table-column prop="paymentNo" label="放款编号"></el-table-column>
-        <el-table-column prop="loanApplicationNo" label="借贷编号"></el-table-column>
+        <el-table-column prop="loanApplicationNo" label="借款编号"></el-table-column>
         <el-table-column prop="contract" label="协议编号"></el-table-column>
         <el-table-column prop="loanPartyKind" label="主体性质"
                          :formatter="(row, col, val) => (this.$filter(val, this.$enum.SUBJECT_PROP, this.$enum.SUBJECT_PROP))"></el-table-column>
         <el-table-column prop="loanPartyName" label="客户姓名/企业名称"></el-table-column>
-        <el-table-column prop="assetChannel" label="资产渠道"></el-table-column>
+        <el-table-column prop="assetOrgName" label="资产渠道"></el-table-column>
         <el-table-column prop="assetKind" label="资产类型"
                          :formatter="(row, col, val) => (this.$filter(val, this.$enum.ASSET_TYPE, this.$enum.ASSET_TYPE))"></el-table-column>
-        <el-table-column prop="loanKind" label="项目名称"
+        <el-table-column prop="projectName" label="项目名称"
                          :formatter="(row, col, val) => (this.$filter(val, this.$enum.LOAN_TYPE, row.assetKind))"></el-table-column>
+        <el-table-column prop="projectType" label="业务类型"
+                         :formatter="(row, col, val) => (this.$filter(val, this.$enum.PROJECT_TYPE, this.$enum.PROJECT_TYPE))"></el-table-column>
         <el-table-column prop="repayWay" label="还款方式"
                          :formatter="(row, col, val) => (this.$filter(val, this.$enum.REPAY_WAY, this.$enum.REPAY_WAY))"></el-table-column>
         <el-table-column prop="repayTerms" label="借款期数"></el-table-column>
         <el-table-column prop="repayTimeType" label="期数单位"
                          :formatter="(row, col, val) => `${row.repayTime}${this.$filter(val, this.$enum.TERM_UNIT, this.$enum.TERM_UNIT)}`"></el-table-column>
         <el-table-column prop="loanAmount" label="放款金额(元)"></el-table-column>
-        <el-table-column prop="amount" label="到账金额(元)"></el-table-column>
+        <el-table-column prop="amount" label="借款到账金额(元)"></el-table-column>
+        <el-table-column prop="collectionAmount" label="代收到账金额(元)"></el-table-column>
+        <!--<el-table-column prop="initialFee" label="期初手续费(元)"></el-table-column>-->
         <el-table-column prop="operatorName" label="操作人"></el-table-column>
         <el-table-column prop="paymentStatus" label="放款状态"
                          :formatter="(row, col, val) => (this.$filter(val, this.$enum.PAYMENT_STATUS, this.$enum.PAYMENT_STATUS))"></el-table-column>
@@ -61,8 +66,9 @@
       </el-table>
     </el-row>
     <el-row type="flex" justify="center" class="mgt20">
-      <el-pagination layout="prev, next" :total="pageTotal" :page-size="search.pageSize"
-                     @current-change="getLoanList"></el-pagination>
+      <el-pagination :total="pageTotal" :page-size="search.pageSize"
+                     layout="total, prev, pager, next, jumper, sizes" :page-sizes="[20, 50, 100]"
+                     @current-change="getData" @size-change="handlePageSizeChange"></el-pagination>
     </el-row>
   </div>
 </template>
@@ -85,7 +91,7 @@
       }
     },
     created() {
-      this.getLoanList(1);
+      this.getData(1);
     },
     computed: {
       applyDate: {
@@ -116,7 +122,11 @@
         const search = this.$deepcopy(this.search);
         this.$download(downloadPaymentList(search), this.$store);
       },
-      getLoanList(index) {
+      handlePageSizeChange(size) {
+        this.search.pageSize = size;
+        this.getData(this.search.pageNumber)
+      },
+      getData(index) {
         const search = this.$objFilter(this.$deepcopy(this.search), _ => _ !== '');
         search.pageNumber = index;
         getLoanList(search).then(response => {
@@ -135,7 +145,7 @@
         })
       },
       handleSearch() {
-        this.getLoanList(1);
+        this.getData(1);
       }
     }
   }

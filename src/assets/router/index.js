@@ -4,36 +4,41 @@ import ErrorNotFound from '../../components/error/NotFound.vue'
 import ErrorUnauthorized from '../../components/error/Unauthorized.vue'
 // org
 import OrgDetail from '../pages/org/Detail.vue'
-import OrgAccountStatement from '../../center/pages/org/AccountStatementList.vue'
+import OrgEdit from '../pages/org/Edit.vue'
+import OrgRelList from '../pages/org/RelList'
 // customer
 import CustomerList from '../pages/customer/List.vue'
 import CustomerDetail from '../pages/customer/Detail.vue'
-import CustomerEdit from '../pages/customer/Edit.vue'
-import CustomerCreate from '../pages/customer/Create.vue'
+// config
+import ConfigProjectList from '../pages/config/project/List'
+import ConfigProjectCreate from '../pages/config/project/Create'
+import ConfigProjectDetail from '../pages/config/project/Detail'
+import ConfigProjectEdit from '../pages/config/project/Edit'
+import ConfigProtectionList from '../pages/config/protection/List'
+import ConfigProtectionCreate from '../pages/config/protection/Create'
+import ConfigProtectionDetail from '../pages/config/protection/Detail'
+import ConfigProtectionEdit from '../pages/config/protection/Edit'
 // asset
 import AssetDetail from '../pages/asset/Detail.vue'
 import AssetApplyList from '../pages/asset/List.vue'
 import AssetApplyCreate from '../pages/asset/Create.vue'
 import AssetApplyEdit from '../pages/asset/Edit.vue'
-import AssetUploadBefore from '../pages/asset/UploadBefore.vue'
-import AssetUploadAfter from '../pages/asset/UploadedList.vue'
-import AssetUploadDetail from '../pages/asset/UploadDetail.vue'
-import AssetUploadEdit from '../pages/asset/UploadEdit.vue'
+import AssetUploadBefore from '../pages/asset/upload/Before.vue'
+import AssetUploadAfter from '../pages/asset/upload/UploadedList.vue'
+import AssetUploadDetail from '../pages/asset/upload/UploadDetail.vue'
+import AssetUploadEdit from '../pages/asset/upload/UploadEdit.vue'
 import AssetFinishList from '../pages/asset/Manage.vue'
+import AssetContinueInfoList from '../pages/asset/ContinueInfo.vue'
 // operation
 import OperationPlanList from '../pages/operation/PlanList.vue'
 import OperationPlanDetail from '../pages/operation/PlanDetail.vue'
 import OperationLoanList from '../pages/operation/LoanList.vue'
 import OperationPlannedBillList from '../pages/operation/PlannedBillList.vue'
 import OperationActualBillList from '../pages/operation/ActualBillList.vue'
-import OperationLoanExceptionList from '../pages/operation/LoanExceptionList.vue'
+import OperationStatList from '../pages/operation/StatList.vue'
 // finance
-import FinanceRepayList from '../pages/finance/RepayList.vue'
-import FinanceProfitList from '../pages/finance/ProfitList.vue'
-import FinanceAccountInfo from '../pages/finance/Account.vue'
-import FinanceAccountBind from '../pages/finance/AccountBind.vue';
-import FinanceAccountWithdraw from '../pages/finance/AccountWithdraw.vue';
-import FinanceAccountWithdrawStatus from '../../modules/finance/WithdrawStatus.vue';
+import FinanceAccountList from '../pages/finance/AccountList'
+import FinanceAccountCreate from '../pages/finance/AccountCreate'
 // account
 import AccountRoleList from '../pages/account/RoleList.vue'
 import AccountUserList from '../pages/account/UserList.vue'
@@ -46,13 +51,24 @@ export default {
   'Org': Public,
   'OrgInfo': Public,
   'OrgDetail': OrgDetail,
-  'OrgAccountStatement': OrgAccountStatement,
+  'OrgEdit': OrgEdit,
+  'OrgRel': Public,
+  'OrgRelList': OrgRelList,
   'Customer': Public,
   'CustomerInfo': Public,
   'CustomerList': CustomerList,
   'CustomerDetail': CustomerDetail,
-  'CustomerEdit': CustomerEdit,
-  'CustomerCreate': CustomerCreate,
+  'Config': Public,
+  'ConfigProject': Public,
+  'ConfigProjectList': ConfigProjectList,
+  'ConfigProjectDetail': ConfigProjectDetail,
+  'ConfigProjectCreate': ConfigProjectCreate,
+  'ConfigProjectEdit': ConfigProjectEdit,
+  'ConfigProtection': Public,
+  'ConfigProtectionList': ConfigProtectionList,
+  'ConfigProtectionDetail': ConfigProtectionDetail,
+  'ConfigProtectionCreate': ConfigProtectionCreate,
+  'ConfigProtectionEdit': ConfigProtectionEdit,
   'Asset': Public,
   'AssetApply': Public,
   'AssetApplyList': AssetApplyList,
@@ -69,6 +85,8 @@ export default {
   'AssetFinishList': AssetFinishList,
   'AssetFinishDetail': AssetDetail,
   'AssetFinishPlanDetail': OperationPlanDetail,
+  'AssetContinueInfo': Public,
+  'AssetContinueInfoList': AssetContinueInfoList,
   'Operation': Public,
   'OperationPlan': Public,
   'OperationPlanList': OperationPlanList,
@@ -79,18 +97,12 @@ export default {
   'OperationPlannedBillList': OperationPlannedBillList,
   'OperationActualBill': Public,
   'OperationActualBillList': OperationActualBillList,
-  // 'OperationLoanException': Public,
-  // 'OperationLoanExceptionList': OperationLoanExceptionList,
-  // 'Finance': Public,
-  // 'FinanceRepay': Public,
-  // 'FinanceRepayList': FinanceRepayList,
-  // 'FinanceProfit': Public,
-  // 'FinanceProfitList': FinanceProfitList,
-  // 'FinanceAccount': Public,
-  // 'FinanceAccountInfo': FinanceAccountInfo,
-  // 'FinanceAccountBind': FinanceAccountBind,
-  // 'FinanceAccountWithdraw': FinanceAccountWithdraw,
-  // 'FinanceAccountWithdrawStatus': FinanceAccountWithdrawStatus,
+  'OperationStat': Public,
+  'OperationStatList': OperationStatList,
+  'Finance': Public,
+  'FinanceAccount': Public,
+  'FinanceAccountList': FinanceAccountList,
+  'FinanceAccountCreate': FinanceAccountCreate,
   'Account': Public,
   'AccountRole': Public,
   'AccountRoleList': AccountRoleList,

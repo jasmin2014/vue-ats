@@ -1,68 +1,80 @@
 <!--appraisalDetails 资产评估详情-->
 <template>
   <div class="risk-detail">
-    <el-table :data="detail" border>
-      <el-table-column v-for="col in table"
-                       align="center"
-                       :key="col.prop"
-                       :label="col.label"
-                       :prop="col.prop"
-                       :width="col.width"
-                       :formatter="col.formatter"></el-table-column>
-    </el-table>
-
-    <el-row class="mgt20">
-      <el-button v-action="'CustomerDetail'"
-                 @click="handleCustomerDetail">查看客户信息</el-button>
-      <el-button v-action="'AssetDetail'"
-                 @click="handleLoanDetail">查看借贷申请信息</el-button>
+    <el-row v-if="$route.name === 'AuditRiskDetail' && $route.query.auditType !== $enum.AUDIT_TYPE_AUTO_CHECK"
+            type="flex" justify="end" style="margin-bottom: 20px;">
+      <el-button type="primary"
+                 @click="handlePass">审核通过</el-button>
+      <el-button @click="handleFeedback">反馈</el-button>
     </el-row>
-    <el-row class="mgt20">
+    <el-row>
+      <asset :loan-customer="loanCustomer"
+             :loan-application="loanApplication"
+             :proof-materials="proofMaterials"
+             :fee="fee"
+             :mode="mode"
+             show-report
+             is-audit></asset>
     </el-row>
-
-    <!--<h4><span>资产评估</span></h4>-->
-    <!--<el-table :data="reportList" border>-->
-      <!--<el-table-column label="评估信息"-->
-                       <!--prop="auditDataKind"-->
-                       <!--align="center"-->
-                       <!--:formatter="(row, col, val) => $filter(val, $enum.AUDIT_TYPE, row.auditKind)"></el-table-column>-->
-      <!--<el-table-column label="渠道结果"-->
-                       <!--prop="channelResult"-->
-                       <!--align="center"-->
-                       <!--:formatter="(row, col, val) => reportFilter[row.auditDataKind] ?-->
-                       <!--$filter(val, reportFilter[row.auditDataKind].kind, reportFilter[row.auditDataKind].group) : val"></el-table-column>-->
-      <!--<el-table-column label="查询网址"-->
-                       <!--prop="searchWebsite"-->
-                       <!--align="center">-->
-        <!--<template slot-scope="scope">-->
-          <!--<a :href="'http://'+ scope.row.searchWebsite" target="_blank">{{scope.row.searchWebsite}}</a>-->
-        <!--</template>-->
-      <!--</el-table-column>-->
-      <!--<el-table-column label="渠道报告"-->
-                       <!--prop="dataReport"-->
-                       <!--align="center">-->
-        <!--<template slot-scope="scope">-->
-          <!--<a v-if="scope.row.dataReport"-->
-             <!--:href="scope.row.dataReport" target="_blank">查看报告</a>-->
-        <!--</template>-->
-      <!--</el-table-column>-->
-      <!--<el-table-column label="估值"-->
-                       <!--prop="artificalValue"-->
-                       <!--align="center"-->
-                       <!--:formatter="(row, col, val) => val || '暂无'"></el-table-column>-->
-    <!--</el-table>-->
   </div>
 </template>
 
 <script>
-  import {getRiskDetail, getReportList} from '../../api/audit'
+  import Asset from '../../../modules/assets/Asset'
+  import {
+    getRiskDetail,
+    pass,
+    feedback
+  } from '../../api/audit'
+  import {
+    getRemarkList,
+    getProofMaterialList,
+    getFeeList,
+    getProtection
+  } from '../../api/asset'
+  import {
+    getIndividualDetail,
+    getEnterpriseDetail
+  } from '../../api/customer';
 
   export default {
+    components: {
+      Asset
+    },
     data() {
       return {
+        id: this.$route.params.id,
+        auditId: this.$route.query.id,
+        mode: 'VIEW',
+        detail: [],
+        loanCustomer: {
+          applicantPerson: {},
+          propCarDTO: {},
+          propHouseDTO: {},
+          propDeviceDTO: {},
+          propShopDTO: {},
+          propElectronicCommerceDTO: {},
+          propPublicReserveFunds: [],
+          relationships: [],
+          friendships: [],
+          materials: []
+        },
+        loanApplication: {
+          loanPartyKind: this.$enum.SUBJECT_PROP_PERSON,
+          assetKind: '',
+          projectName: '',
+          repayWay: '',
+          loanModel: '',
+          repayModel: ''
+        },
+        proofMaterials: {
+          pdfs: [],
+          originals: []
+        },
+        fee: {},
         table: [
           {
-            label: '借贷编号',
+            label: '借款编号',
             prop: 'loanApplicationNo'
           },
           {
@@ -71,7 +83,7 @@
           },
           {
             label: '资产渠道',
-            prop: 'assetChannel'
+            prop: 'assetOrgName'
           },
           {
             label: '主体性质',
@@ -89,7 +101,7 @@
           },
           {
             label: '项目名称',
-            prop: 'loanKind',
+            prop: 'projectName',
             formatter: (row, col, value) => this.$filter(value, this.$enum.LOAN_TYPE, row.assetKind)
           },
           {
@@ -109,61 +121,156 @@
             label: '申请时间',
             prop: 'appliedTime',
             width: 85
-          },
-          {
-            label: '审核节点',
-            prop: 'auditStep',
-            formatter: (row, col, val) => this.$filter(val, this.$enum.AUDIT_STEP, this.$enum.AUDIT_STEP_GROUP)
           }
-        ],
-        detail: [],
-        reportList: [],
-        id: this.$route.params.id,
-        reportFilter: {
-          chsi: {
-            kind: this.$enum.EDUCATION,
-            group: this.$enum.EDUCATION_GROUP
-          }
-        }
+        ]
       };
     },
     created() {
-      this.getRiskDetail(this.id);
-      this.getReportList(this.id, this.$enum.AUDIT_TYPE_POSITIVE_ASSET);
+      this.getData(this.id);
     },
     methods: {
-      handleCustomerDetail() {
-        const id = this.detail[0].loanParty;
-        const type = this.detail[0].loanPartyKind;
-        window.open(`/center.html#/customer/detail/${id}?type=${type}`)
-        // this.$router.push({
-        //   name: 'CustomerDetail',
-        //   params: { id },
-        //   query: { type }
-        // })
-      },
-      handleLoanDetail() {
-        window.open(`/center.html#/asset/detail/${this.id}`)
-        // this.$router.push({
-        //   name: 'AssetDetail',
-        //   params: { id: this.id }
-        // });
-      },
-      // 审核详情
-      getRiskDetail(id) {
-        getRiskDetail(id).then(({ data }) => {
+      handlePass() {
+        pass(this.auditId, this.id).then(({ data }) => {
           if (data.code === 200) {
-            this.detail.push(data.body);
+            setTimeout(() => {
+              this.$message.success('审核通过成功');
+              this.$router.go(-1);
+            }, 1000);
           }
-        }).catch(() => {})
+        })
       },
-      // 审核详情列表
-      getReportList(loanApplicationNo, auditKind) {
-        getReportList(loanApplicationNo, auditKind).then(({ data }) => {
+      handleFeedback() {
+        this.$prompt('具体描述', '反馈问题').then(({ value }) => {
+          feedback(this.auditId, this.id, value).then(({ data }) => {
+            if (data.code === 200) {
+              setTimeout(() => {
+                this.$message.success('反馈成功');
+                this.$router.go(-1);
+              }, 1000);
+            }
+          })
+        })
+      },
+
+      getData(id) {
+        this.getLoanDetail(id);
+        this.getFeeList(id);
+      },
+      // 基本信息
+      getLoanDetail(loanId) {
+        getRiskDetail(loanId).then(({ data }) => {
           if (data.code === 200) {
-            this.reportList = data.body || [];
+            this.loanApplication = data.body;
+            if (data.body.planId) {
+              this.getProtectionPlan(data.body.planId);
+            }
+            this.getRemarkList(loanId);
+            this.getCustomerDetail(loanId, data.body.loanPartyKind);
+          } else if (data.code === 204) {
+            this.$message({
+              message: '借贷申请不存在',
+              type: 'error'
+            });
+            this.$router.go(-1)
+          } else {
+            this.$message({
+              message: data.message,
+              type: 'error'
+            });
           }
-        }).catch(() => {})
+        }, () => {});
+      },
+      getCustomerDetail(loanId, type) {
+        let promise = {};
+        switch (type) {
+          case this.$enum.SUBJECT_PROP_PERSON:
+            promise = getIndividualDetail(loanId);
+            break;
+          case this.$enum.SUBJECT_PROP_ORGANIZE:
+            promise = getEnterpriseDetail(loanId);
+            break;
+        }
+        promise.then(({ data }) => {
+          if (data.code === 200) {
+            this.loanCustomer = data.body;
+            this.getMaterialList(loanId, type);
+          } else {
+            this.$message.error(data.message);
+          }
+        }).catch(() => {});
+      },
+      getMaterialList(loanId, type) {
+        getProofMaterialList(loanId).then(({ data }) => {
+          if (data.code === 200) {
+            const materials = data.body && data.body.loanMaterials;
+            if (materials) {
+              this.proofMaterials.originals = materials[this.$enum.PROOF_MATERIAL_P_LOAN_APP] || [];
+              this.proofMaterials.pdfs = materials[this.$enum.PROOF_MATERIAL_P_LOAN_APP_PDF] || [];
+
+              switch (type) {
+                case this.$enum.SUBJECT_PROP_PERSON:
+                  if (materials[this.$enum.PROOF_MATERIAL_P_ID_CARD]) {
+                    this.$set(this.loanCustomer, 'materials', materials[this.$enum.PROOF_MATERIAL_P_ID_CARD] || []);
+                  }
+                  break;
+                case this.$enum.SUBJECT_PROP_ORGANIZE:
+                  let list = [];
+                  if (materials[this.$enum.PROOF_MATERIAL_O_LICENSE]) {
+                    list = list.concat(materials[this.$enum.PROOF_MATERIAL_O_LICENSE]);
+                  }
+                  if (materials[this.$enum.PROOF_MATERIAL_O_OTHER]) {
+                    list = list.concat(materials[this.$enum.PROOF_MATERIAL_O_OTHER]);
+                  }
+                  this.$set(this.loanCustomer, 'materials', list);
+                  break;
+              }
+
+              if (this.loanCustomer.propCarDTO && materials[this.$enum.CUSTOMER_PROP_CAR]) {
+                this.$set(this.loanCustomer.propCarDTO, 'materials', materials[this.$enum.CUSTOMER_PROP_CAR] || []);
+              }
+
+              if (this.loanCustomer.propHouseDTO && materials[this.$enum.CUSTOMER_PROP_HOUSE]) {
+                this.$set(this.loanCustomer.propHouseDTO, 'materials', materials[this.$enum.CUSTOMER_PROP_HOUSE] || []);
+              }
+
+              if (this.loanCustomer.propDeviceDTO && materials[this.$enum.CUSTOMER_PROP_DEVICE]) {
+                this.$set(this.loanCustomer.propDeviceDTO, 'materials', materials[this.$enum.CUSTOMER_PROP_DEVICE] || []);
+              }
+
+              if (this.loanCustomer.propShopDTO && materials[this.$enum.CUSTOMER_PROP_SHOP]) {
+                this.$set(this.loanCustomer.propShopDTO, 'materials', materials[this.$enum.CUSTOMER_PROP_SHOP] || []);
+              }
+
+              if (this.loanCustomer.propElectronicCommerceDTO && materials[this.$enum.CUSTOMER_PROP_ESHOP]) {
+                this.$set(this.loanCustomer.propElectronicCommerceDTO, 'materials', materials[this.$enum.CUSTOMER_PROP_ESHOP] || []);
+              }
+            }
+          }
+        }, () => {})
+      },
+      getRemarkList(loanId) {
+        getRemarkList(loanId).then(({data}) => {
+          if (data.code === 200) {
+            this.$set(this.loanApplication, 'remarkList', data.body)
+          }
+        }, () => {});
+      },
+      getFeeList(loanId) {
+        getFeeList(loanId).then(response => {
+          const res = response.data;
+          if (res.code === 200) {
+            this.$set(this.fee, 'allList', res.body);
+          }
+        }, () => {})
+      },
+      getProtectionPlan(planId) {
+        getProtection(planId).then(({ data }) => {
+          if (data.code === 200 && data.body) {
+            const list = [];
+            list.push(data.body);
+            this.$store.commit('application/updateProtectionPlanList', list);
+          }
+        })
       }
     }
   };

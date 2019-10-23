@@ -65,33 +65,17 @@ export const getRoleList = (params) => {
   })
 };
 export const getRoleDetail = (roleId, code) => {
-  return http.assets.get(`v1/role/detail/${roleId}`, {
-    headers: {
-      'X-Action-Code': code
-    }
-  })
+  return http.assets.get(`v1/role/detail/${roleId}`)
 };
 export const createRole = (data) => {
-  return http.assets.post('v1/role', data, {
-    headers: {
-      'X-Action-Code': window.__buttons['AccountRoleCreate']
-    }
-  })
+  return http.assets.post('v1/role', data)
 };
 export const editRole = (roleId, data) => {
   data.roleId = roleId;
-  return http.assets.put('v1/role', data, {
-    headers: {
-      'X-Action-Code': window.__buttons['AccountRoleEdit']
-    }
-  })
+  return http.assets.put('v1/role', data)
 };
 export const deleteRole = (roleId) => {
-  return http.assets.delete(`v1/role/${roleId}`, {
-    headers: {
-      'X-Action-Code': window.__buttons['AccountRoleDelete']
-    }
-  })
+  return http.assets.delete(`v1/role/${roleId}`)
 };
 
 /** ======================= 用户 ===================== **/
@@ -100,52 +84,29 @@ export const getUserList = (params) => {
     params
   })
 };
-export const getUserDetail = (id, code) => {
-  return http.assets.get(`v1/login/user/detail/${id}`, {
-    headers: {
-      'X-Action-Code': code
-    }
-  })
+export const getUserDetail = (id) => {
+  return http.assets.get(`v1/login/user/detail/${id}`)
 };
 export const createUser = (data) => {
-  return http.assets.post('v1/login/user', data, {
-    headers: {
-      'X-Action-Code': window.__buttons['AccountUserCreate']
-    }
-  })
+  return http.assets.post('v1/login/user', data)
 };
 export const editUser = (id, data) => {
   data.partyId = id;
-  return http.assets.put('v1/login/user', data, {
-    headers: {
-      'X-Action-Code': window.__buttons['AccountUserEdit']
-    }
-  })
+  return http.assets.put('v1/login/user', data)
 };
 export const deleteUser = (partyId) => {
-  return http.assets.delete(`v1/login/user/${partyId}`, {
-    headers: {
-      'X-Action-Code': window.__buttons['AccountUserDelete']
-    }
-  })
+  return http.assets.delete(`v1/login/user/${partyId}`)
 };
 export const getRoleListByOrg = () => {
   return http.assets.get('v1/role/list/by/org')
 };
 export const getRoleListByUser = (partyId, code) => {
-  return http.assets.get(`v1/user/role/list/${partyId}`, {
-    headers: {
-      'X-Action-Code': code
-    }
-  })
+  return http.assets.get(`v1/user/role/list/${partyId}`)
 };
 export const saveUserRole = (partyId, roleIdList, code) => {
   return http.assets.post('v1/user/role', roleIdList, {
     params: {
       partyId
-    },
-    headers: {
-      'X-Action-Code': code
     }
   })
 };

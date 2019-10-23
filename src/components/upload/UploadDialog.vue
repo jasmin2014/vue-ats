@@ -7,6 +7,7 @@
       <ats-upload ref="upload"
                   v-model="currentValue"
                   :mode="mode"
+                  :limit="limit"
                   :accept="accept"
                   :no-delete="noDelete"
                   @start="handleUploadStart"
@@ -32,6 +33,7 @@
     props: {
       visible: Boolean,
       value: Array,
+      limit: Number,
       mode: String,
       accept: String,
       noDelete: Boolean
@@ -46,9 +48,10 @@
     watch: {
       value(val, oldVal) {
         this.currentValue = this.$deepcopy(val).map((_, i) => ({
+          type: _.type,
           url: _.url,
           name: _.name,
-          id: i
+          id: _.id || i
         }));
       },
       visible(val, oldVal) {
@@ -90,6 +93,7 @@
         this.currentValue = this.currentValue.filter(_ => _.id !== file.id).map((_, i) => ({
           url: _.url,
           name: _.name,
+          type: _.type,
           id: _.id || i
         }));
         this.$emit('remove', file, this.$deepcopy(this.currentValue));

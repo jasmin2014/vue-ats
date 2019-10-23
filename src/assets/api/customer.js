@@ -2,26 +2,31 @@ import http from '../../lib/http';
 
 /** ================ LIST ======================= **/
 export const getIndividualCustomerList = (params) => {
-  params.currentPage = params.pageNumber;
-  delete params.pageNumber;
-  return http.assets.get('v1/person/customer/list/page', {
+  return http.assets.get('/v2/loan-party/person-customer/page', {
     params
   })
 };
 export const getEnterpriseCustomerList = (params) => {
-  params.searchKeyword = params.searchKey || '';
-  delete params.searchKey;
-  return http.assets.get('v1/party/enterprise/page', {
+  return http.assets.get('/v2/loan-party/org-customer/page', {
     params
   })
 };
 
 /** ================ DETAIL ======================= **/
-export const getIndividualDetail = (id) => {
-  return http.assets.get(`v1/person/customer/detail/${id}`)
+export const getCustomerLoanList = (partyId) => {
+  return http.assets.get(`/v2/loan-party/loan-application/${partyId}`)
 };
-export const getEnterpriseDetail = (id) => {
-  return http.assets.get(`v1/party/enterprise/${id}`)
+export const getPerson = (id) => {
+  return http.assets.get(`/v2/loan-party/person-customer/${id}`)
+};
+export const getOrg = (id) => {
+  return http.assets.get(`/v2/loan-party/org-customer/${id}`)
+};
+export const getIndividualDetail = (loanId) => {
+  return http.assets.get(`/v2/loan-application-customer/person-customer/${loanId}`)
+};
+export const getEnterpriseDetail = (loanId) => {
+  return http.assets.get(`/v2/loan-application-customer/org-customer/${loanId}`)
 };
 export const getEnterpriseLegalDetail = (partyId) => {
   return http.assets.get('v1/party/enterprise/_find-enterprise-legal-person', {
@@ -40,17 +45,15 @@ export const createEnterpriseCustomer = (data) => {
 };
 
 /** ================ EDIT(BASE/CONTACT/BUSINESS/LEGAL) ======================= **/
-export const editIndividualCustomer = (partyId, data) => {
-  data.partyId = partyId;
-  return http.assets.put(`v1/person/customer/base/${partyId}`, data)
+export const editIndividualCustomer = (loanId, data) => {
+  return http.assets.post(`/v2/loan-application-customer/person-customer/${loanId}`, data)
+};
+export const editEnterpriseCustomer = (loanId, data) => {
+  return http.assets.post(`/v2/loan-application-customer/org-customer/${loanId}`, data)
 };
 export const editCustomerContact = (partyId, data) => {
   // data.partyId = partyId;
   return http.assets.put(`v1/person/customer/contact/info/${partyId}`, data)
-};
-export const editEnterpriseCustomer = (partyId, data) => {
-  data.partyId = partyId;
-  return http.assets.put('v1/party/enterprise', data)
 };
 export const editCustomerBusiness = (partyId, data) => {
   data.partyId = partyId;

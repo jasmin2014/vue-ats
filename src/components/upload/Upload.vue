@@ -24,6 +24,7 @@
              :data="postData"
              :show-file-list="true"
              :list-type="listType"
+             :multiple="multiple"
              :before-upload="handleBeforeUpload"
              :on-remove="handleRemove"
              :on-success="handleSuccess"
@@ -60,7 +61,7 @@
       },
       action: {
         type: String,
-        default: location.protocol === 'https:' ? 'https://up.qbox.me' : 'http://upload.qiniu.com'
+        default: QINIU_UPLOAD_URL
       },
       limit: {
         type: Number,
@@ -68,7 +69,8 @@
       },
       placeholder: String,
       noDelete: Boolean,
-      required: Boolean
+      required: Boolean,
+      multiple: Boolean
     },
     data() {
       return {
@@ -96,7 +98,7 @@
     },
     methods: {
       setCurrentValue(val, oldVal) {
-        if (JSON.stringify(val) === JSON.stringify(this.currentValue)) return;
+        if (JSON.stringify(val) === JSON.stringify(oldVal)) return;
         this.currentValue = this.$deepcopy(val);
         if (this.currentValue.length) {
           if (this.$isUrl(this.currentValue[0].url)) {
@@ -131,9 +133,10 @@
         const fileName = file.raw.name.split('.');
         const suffix = fileName.length > 1 ? fileName[fileName.length - 1] : '';
         this.$emit('success', {
+          uid: file.uid,
           key: response.key,
           type: suffix.toLowerCase(),
-          name: file.raw.name.slice(0, 20)
+          name: file.raw.name.slice(0, 100)
         })
       },
       handleError(response, file, fileList) {

@@ -27,7 +27,8 @@
         <el-col :span="8">
           <el-form-item label="关键词">
             <el-input v-model="search.otherParams"
-                      placeholder="借贷编号/协议编号/客户姓名/企业名称"></el-input>
+                      placeholder="借款编号/协议编号/客户姓名/企业名称"
+                      clearable></el-input>
           </el-form-item>
         </el-col>
         <el-col :span="3">
@@ -57,10 +58,9 @@
     </el-row>
     <!--分页-->
     <el-row type="flex" justify="center" class="mgt20">
-      <el-pagination @current-change="getList"
-                     :page-size="search.pageSize"
-                     layout="prev, next"
-                     :total="totalRecord"></el-pagination>
+      <el-pagination :total="totalRecord" :page-size="search.pageSize"
+                     layout="total, prev, pager, next, jumper, sizes" :page-sizes="[20, 50, 100]"
+                     @current-change="getData" @size-change="handlePageSizeChange"></el-pagination>
     </el-row>
   </div>
 </template>
@@ -74,8 +74,8 @@
         list: [], // 列表数据
         totalRecord: 0, // 总条数
         search: {
-          appliedStartTime: this.$dateStringify(this.$lastNMonth(new Date(), 3)),
-          appliedEndTime: this.$dateStringify(new Date()),
+          paymentStartTime: this.$dateStringify(this.$lastNMonth(new Date(), 3)),
+          paymentEndTime: this.$dateStringify(new Date()),
           otherParams: '',
           raisePartyOrg: '',
           assetChannel: '',
@@ -84,7 +84,7 @@
         },
         table: [
           {
-            label: '借贷编号',
+            label: '借款编号',
             prop: 'loanApplicationNo'
           },
           {
@@ -102,11 +102,11 @@
           },
           {
             label: '资产渠道',
-            prop: 'assetChannel'
+            prop: 'assetOrgName'
           },
           {
             label: '资金端',
-            prop: 'raisePartyOrgName'
+            prop: 'fundOrgName'
           },
           {
             label: '资产类型',
@@ -115,8 +115,13 @@
           },
           {
             label: '项目名称',
-            prop: 'loanKind',
+            prop: 'projectName',
             formatter: (row, col, value) => this.$filter(value, this.$enum.LOAN_TYPE, row.assetKind)
+          },
+          {
+            label: '业务类型',
+            prop: 'projectType',
+            formatter: (row, col, value) => this.$filter(value, this.$enum.PROJECT_TYPE, this.$enum.PROJECT_TYPE)
           },
           {
             label: '还款方式',
@@ -147,10 +152,10 @@
     computed: {
       applyDate: {
         get() {
-          if (this.search.appliedStartTime || this.search.appliedEndTime) {
+          if (this.search.paymentStartTime || this.search.paymentEndTime) {
             const dateRange = [];
-            dateRange[0] = this.search.appliedStartTime;
-            dateRange[1] = this.search.appliedEndTime;
+            dateRange[0] = this.search.paymentStartTime;
+            dateRange[1] = this.search.paymentEndTime;
             return dateRange;
           } else {
             return '';
@@ -158,30 +163,34 @@
         },
         set(range) {
           if (range) {
-            this.search.appliedStartTime = range[0];
-            this.search.appliedEndTime = range[1];
+            this.search.paymentStartTime = range[0];
+            this.search.paymentEndTime = range[1];
           } else {
-            this.search.appliedStartTime = '';
-            this.search.appliedEndTime = '';
+            this.search.paymentStartTime = '';
+            this.search.paymentEndTime = '';
           }
         }
       }
     },
     created() {
-      this.getList(1);
+      this.getData(1);
     },
     methods: {
       handleSearch() {
-        this.getList(1);
+        this.getData(1);
       },
       handleDownload() {
         const search = this.$deepcopy(this.search);
         this.$download(downloadRepayList(search), this.$store);
       },
+      handlePageSizeChange(size) {
+        this.search.pageSize = size;
+        this.getData(this.search.pageNumber)
+      },
       handleDetail(row) {
         this.$router.push({ name: 'OperationPlanDetail', params: { id: row.id } });
       },
-      getList(index) {
+      getData(index) {
         const search = this.$objFilter(this.$deepcopy(this.search), _ => _ !== '');
         search.pageNumber = index;
         getRepayList(search).then(response => {

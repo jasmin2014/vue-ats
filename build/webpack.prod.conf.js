@@ -111,22 +111,6 @@ var webpackConfig = merge(baseWebpackConfig, {
         collapseWhitespace: true
       }
     }),
-    new HtmlWebpackPlugin({
-      filename: 'chain-assets.html',
-      template: './src/pages/chain-assets.html',
-      favicon: './src/pages/favicon.ico',
-      hash: true,
-      inject: true,
-      chunks: ['manifest', 'vendor', 'chain_assets']
-    }),
-    new HtmlWebpackPlugin({
-      filename: 'chain-funds.html',
-      template: './src/pages/chain-funds.html',
-      favicon: './src/pages/favicon.ico',
-      hash: true,
-      inject: true,
-      chunks: ['manifest', 'vendor', 'chain_funds']
-    }),
     // keep module.id stable when vender modules does not change
     new webpack.HashedModuleIdsPlugin(),
     // split vendor js into its own file

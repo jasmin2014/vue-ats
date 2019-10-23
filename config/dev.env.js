@@ -6,7 +6,9 @@ module.exports = merge(prodEnv, {
   'process.env': {
     NODE_ENV: '"development"'
   },
-  APP_ID: '"uc3f9ebb0c36a43284"', // 用户中心appId
-  APP_SECRET: '"45a62fd2c438431fabd806c56bec3948"', // 用户中心appSecret
-  U_CENTER_BASE_URL: '"http://uat-ucenter.tairancloud.com/gateway/foundation-user"'
+  APP_ID: '"uc2730c65f6139544e"', // 用户中心appId
+  APP_SECRET: '"5644d16b0daa4871ba1d114d6023f0e2"', // 用户中心appSecret
+  U_CENTER_BASE_URL: '"http://ucenter.fengdai.org/gateway/foundation-user"',
+  U_CENTER_TENANT_URL: '"http://ucenter.fengdai.org/gateway/foundation-tenant"',
+  QINIU_UPLOAD_URL: '"http://upload.qiniu.com"'
 });

@@ -18,7 +18,8 @@
         <el-col :span="8">
           <el-form-item label="关键词">
             <el-input v-model="search.otherParams"
-                      placeholder="借贷编号/协议编号/客户姓名/企业名称"></el-input>
+                      placeholder="借款编号/协议编号/客户姓名/企业名称"
+                      clearable></el-input>
           </el-form-item>
         </el-col>
         <el-col :span="3">
@@ -32,17 +33,18 @@
     </el-form>
     <el-row>
       <el-table :data="planData" class='table-center' border>
-        <el-table-column prop="loanApplicationNo" label="借贷编号"></el-table-column>
+        <el-table-column prop="loanApplicationNo" label="借款编号"></el-table-column>
         <el-table-column prop="contract" label="协议编号"></el-table-column>
         <el-table-column prop="loanPartyKind" label="主体性质"
                          :formatter="(row, col, val) => (this.$filter(val, this.$enum.SUBJECT_PROP, this.$enum.SUBJECT_PROP))"></el-table-column>
         <el-table-column prop="loanPartyName" label="客户姓名/企业名称"></el-table-column>
-        <el-table-column prop="assetChannel" label="资产渠道"></el-table-column>
-        <el-table-column prop="raisePartyOrgName" label="资金端"></el-table-column>
+        <el-table-column prop="assetOrgName" label="资产渠道"></el-table-column>
         <el-table-column prop="assetKind" label="资产类型"
                          :formatter="(row, col, val) => (this.$filter(val, this.$enum.ASSET_TYPE, this.$enum.ASSET_TYPE))"></el-table-column>
-        <el-table-column prop="loanKind" label="项目名称"
+        <el-table-column prop="projectName" label="项目名称"
                          :formatter="(row, col, val) => (this.$filter(val, this.$enum.LOAN_TYPE, row.assetKind))"></el-table-column>
+        <el-table-column prop="projectType" label="业务类型"
+                         :formatter="(row, col, val) => (this.$filter(val, this.$enum.PROJECT_TYPE, this.$enum.PROJECT_TYPE))"></el-table-column>
         <el-table-column prop="repayWay" label="还款方式"
                          :formatter="(row, col, val) => (this.$filter(val, this.$enum.REPAY_WAY, this.$enum.REPAY_WAY))"></el-table-column>
         <el-table-column prop="repayIntRate" label="借款利率(年化利率)"
@@ -63,8 +65,9 @@
       </el-table>
     </el-row>
     <el-row type="flex" justify="center" class="mgt20">
-      <el-pagination layout="prev, next" :total="pageTotal" :page-size="search.pageSize"
-                     @current-change="getRepayList"></el-pagination>
+      <el-pagination :total="pageTotal" :page-size="search.pageSize"
+                     layout="total, prev, pager, next, jumper, sizes" :page-sizes="[20, 50, 100]"
+                     @current-change="getData" @size-change="handlePageSizeChange"></el-pagination>
     </el-row>
   </div>
 </template>
@@ -88,7 +91,7 @@
       }
     },
     created() {
-      this.getRepayList(1);
+      this.getData(1);
     },
     computed: {
       applyDate: {
@@ -118,7 +121,11 @@
         const search = this.$deepcopy(this.search);
         this.$download(downloadRepayPlanList(search), this.$store);
       },
-      getRepayList(index) {
+      handlePageSizeChange(size) {
+        this.search.pageSize = size;
+        this.getData(this.search.pageNumber)
+      },
+      getData(index) {
         const search = this.$objFilter(this.$deepcopy(this.search), _ => _ !== '');
         search.pageNumber = index;
         getRepayList(search).then(response => {
@@ -140,7 +147,7 @@
         this.$router.push({ name: 'OperationPlanDetail', params: { id } })
       },
       handleSearch() {
-        this.getRepayList(1);
+        this.getData(1);
       }
     }
   }

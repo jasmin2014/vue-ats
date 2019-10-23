@@ -59,7 +59,8 @@
               accumulator[key] = accumulator[key] || [];
               accumulator[key].push({
                 text: item.displayName,
-                value: item.enumKey
+                value: item.enumKey,
+                visible: item.visible
               });
               return accumulator
             }, {});

@@ -27,6 +27,29 @@
       </el-table-column>
     </el-table>
 
+    <div class="pdf-wrap">
+      <h4><span>资料文件</span></h4>
+
+      <el-row type="flex">
+        <ul v-if="pdfList && pdfList.length" class="pdf-list">
+          <li v-for="pdf in pdfList">
+            <a :href="pdf.fileUri">
+              <i class="el-icon-document"></i>
+              {{ pdf.fileName }}
+            </a>
+
+            <label class="btn-wrap">
+              <i v-if="pdf.status === 0" class="fa fa-cut btn-cut" @click="handlePdfCut(pdf)" title="切图"></i>
+              <i v-else class="el-icon-upload-success el-icon-circle-check"></i>
+            </label>
+          </li>
+        </ul>
+        <div v-else
+             class="no-pdf">
+          <div class="text">无</div>
+        </div>
+      </el-row>
+    </div>
     <div class="wrapper">
       <h4>
         <span>资料原图</span>
@@ -34,21 +57,29 @@
       <h4>
         <span>处理后</span>
       </h4>
-      <ul class="list">
+      <ul v-if="picList && picList.length" class="list">
         <li v-for="(item, index) in picList" :key="index">
-          <div class="pic-item" :class="!item.mosaic ? '' : 'is-done-mosaic'">
-            <img :src="item.origin.uri" :alt="item.origin.name" crossorigin="anonymous"/>
+          <div class="pic-item" :class="{ 'is-done-mosaic': !!item.mosaic, 'is-pdf': item.origin.cutImageIdent !== 0 }">
+            <img :src="item.origin.fileUri" :alt="item.origin.fileName" crossorigin="anonymous"/>
             <span class="actions">
+              <i class="fa fa-rotate-left" @click="handleRotateLeft(index)" title="逆时针旋转90度"></i>
+              <i class="el-icon-zoom-in" @click="handlePreview(item.origin.id, index)"></i>
               <i class="fa fa-edit" @click="handleEditPic(index)"></i>
+              <i class="fa fa-rotate-right" @click="handleRotateRight(index)" title="顺时针旋转90度"></i>
             </span>
           </div>
           <div class="pic-item" v-if="item.mosaic">
-            <img :src="item.mosaic.uri" :alt="item.mosaic.name"/>
+            <img :src="item.mosaic.fileUri" :alt="item.mosaic.fileName"/>
             <span class="actions">
-              <i class="el-icon-zoom-in" @click="handlePreview(index)"></i>
+              <i class="el-icon-zoom-in" @click="handlePreview(item.mosaic.id)"></i>
               <i class="el-icon-delete" @click="handleDelete(item.mosaic)"></i>
             </span>
           </div>
+        </li>
+      </ul>
+      <ul v-else class="list">
+        <li>
+          <div class="pic-item no-pic">无</div>
         </li>
       </ul>
     </div>
@@ -88,7 +119,7 @@
         </el-col>
         <el-col :span="5">
           <el-tooltip content="撤销 (Ctrl+Z)">
-            <el-button icon="fa fa-undo"
+            <el-button icon="fa fa-history"
                        size="small"
                        :disabled="paintHistory.length === 0"
                        @click="handleUndo"></el-button>
@@ -114,7 +145,7 @@
         <el-col v-show="currentCommand === 'mosaic'"
                 :span="6">
           <el-slider v-model="mosaicSize"
-                     :step="5" :min="5" :max="50" :format-tooltip="formatTooltip"></el-slider>
+                     :step="10" :min="10" :max="200" :format-tooltip="formatTooltip"></el-slider>
         </el-col>
         <el-col v-show="currentCommand === 'crop'"
                 :span="4" :offset="3">
@@ -152,7 +183,11 @@
       </div>
     </el-dialog>
 
-    <el-row type="flex" justify="center">
+    <div class="rotate-container">
+      <canvas ref="rotateCanvas" width="768" height="500"></canvas>
+    </div>
+
+    <el-row class="mgt20" type="flex" justify="center">
       <el-button type="primary"
                  @click="handlePush">推送</el-button>
       <el-button @click="handleCancel">取消</el-button>
@@ -163,12 +198,17 @@
 <script>
   import hotkeys from 'hotkeys-js';
   import {
-    getPicDetail,
+    getStoreDetail,
+    getPushLoanDetail,
+    getProofMaterialList,
+    cutPdfToPic,
     saveMosaicPic,
     deleteMosaicPic,
     getCustomizedFieldByParty,
-    pushLoanApplication} from '../../../api/assetMgt'
-  import {postQiniu} from '../../../../api/common';
+    batchPushLoan} from '../../../api/assetMgt'
+  import {
+    postQiniu,
+    getPicUrls} from '../../../../api/common';
   const COMMAND = {
     MOSAIC: 'mosaic',
     CROP: 'crop'
@@ -181,6 +221,7 @@
       return {
         id: this.$route.params.id,
         detail: [],
+        pdfList: [],
         picList: [],
         currentOriginIndex: null,
         showDialog: false,
@@ -190,19 +231,19 @@
         currentCommand: null,
         paintHistory: [],
         ratio: 1,
-        mosaicSize: 20,
+        mosaicSize: 200,
         isCropping: false,
         cropWidth: 0,
         cropHeight: 0,
         list: [],
         table: [
           {
-            label: '借贷编号',
+            label: '借款编号',
             prop: 'loanApplicationNo'
           },
           {
             label: '资产渠道',
-            prop: 'assetChannel'
+            prop: 'assetOrgName'
           },
           {
             label: '主体性质',
@@ -215,9 +256,9 @@
             formatter: (row, col, value) => this.$filter(value, this.$enum.ASSET_TYPE, this.$enum.ASSET_TYPE)
           },
           {
-            label: '项目名称',
-            prop: 'loanKind',
-            formatter: (row, col, value) => this.$filter(value, this.$enum.LOAN_TYPE, row.assetKind)
+            label: '业务类型',
+            prop: 'projectType',
+            formatter: (row, col, value) => this.$filter(value, this.$enum.PROJECT_TYPE, this.$enum.PROJECT_TYPE)
           },
           {
             label: '申请时间',
@@ -246,6 +287,7 @@
         return false;
       }
     },
+
     created() {
       this.getData(this.id);
     },
@@ -259,27 +301,104 @@
       hotkeys.unbind('m');
       hotkeys.unbind('c');
     },
+
     methods: {
+      // pdf切成图片
+      handlePdfCut(pdf) {
+        this.$confirm(`确定将PDF（${pdf.fileName}）切图?`, '提示', { type: 'warning'}).then(() => {
+          cutPdfToPic(pdf.id).then(({ status }) => {
+            if (status === 201) {
+              this.$message.success('切图成功');
+            } else {
+              this.$message.error(data.message);
+            }
+            setTimeout(() => {
+              this.getData(this.id);
+            }, 1000)
+          }).catch(() => {
+            this.getData(this.id);
+          })
+        }).catch(() => {})
+      },
       // 编辑原图
       handleEditPic(index) {
         this.currentOriginIndex = index;
         this.showDialog = true;
       },
+      // 旋转（顺/逆）
+      handleRotateLeft(index) {
+        const currentOrigin = this.picList[index].origin;
+        const currentMosaic = this.picList[index].mosaic || {};
+        const canvas = this.$refs.rotateCanvas;
+        const ctx = canvas.getContext('2d');
+        this.loadImage(currentMosaic.fileUri || currentOrigin.fileUri, (img, canvasWidth, canvasHeight) => {
+          canvas.width = canvasHeight;
+          canvas.height = canvasWidth;
+          ctx.save();
+          ctx.translate(0, canvasWidth); // 先平移
+          ctx.rotate(-90 * Math.PI / 180);
+          ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+          ctx.restore();
+          const url = canvas.toDataURL(currentOrigin.type);
+          this.saveImageByUrl(url, currentOrigin.id, currentMosaic.id, currentOrigin.fileName, currentOrigin.fileType, () => {
+            this.$message.success('逆时针旋转90度');
+            this.getData(this.id);
+          }, (msg) => {
+            this.$message.error(msg || '七牛错误');
+          })
+        }, () => {
+          this.$message.error('图片不存在')
+        })
+      },
+      handleRotateRight(index) {
+        const currentOrigin = this.picList[index].origin;
+        const currentMosaic = this.picList[index].mosaic || {};
+        const canvas = this.$refs.rotateCanvas;
+        const ctx = canvas.getContext('2d');
+        this.loadImage(currentMosaic.fileUri || currentOrigin.fileUri, (img, canvasWidth, canvasHeight) => {
+          canvas.width = canvasHeight;
+          canvas.height = canvasWidth;
+          ctx.save();
+          ctx.translate(canvasHeight, 0); // 先平移
+          ctx.rotate(90 * Math.PI / 180);
+          ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+          ctx.restore();
+          const url = canvas.toDataURL(currentOrigin.type);
+          this.saveImageByUrl(url, currentOrigin.id, currentMosaic.id, currentOrigin.fileName, currentOrigin.fileType, () => {
+            this.$message.success('顺时针旋转90度');
+            this.getData(this.id);
+          }, (msg) => {
+            this.$message.error(msg || '七牛错误');
+          })
+        }, () => {})
+      },
       // 预览
-      handlePreview(index) {
-        const mosaicList = this.picList.map(_ =>
-          (_.mosaic ? {
-            url: _.mosaic.uri,
-            name: _.mosaic.name
-          } : null)
-        ).filter(_ => _ !== null);
-        this.$preview(mosaicList, index);
+      handlePreview(fileId, index = -1) {
+        let picList = [];
+        if (index === -1) { // 马赛克
+          picList = this.picList.map(_ =>
+            (_.mosaic ? {
+              id: _.mosaic.id,
+              url: _.mosaic.fileUri,
+              name: _.mosaic.fileName
+            } : null)
+          ).filter(_ => _ !== null);
+          index = picList.findIndex(_ => _.id === fileId);
+        } else {
+          picList = this.picList.map(_ => ({
+            url: _.origin.fileUri,
+            name: _.origin.fileName
+          }))
+        }
+        console.log(picList);
+        console.log(index);
+        this.$preview(picList, index);
       },
       handleDelete(file) {
         this.$confirm('确认删除?', '提示', {
           type: 'warning'
         }).then(() => {
-          deleteMosaicPic(file.proofMaterial).then(({ status }) => {
+          deleteMosaicPic(file.id).then(({ status }) => {
             if (status === 204) {
               this.$message({
                 message: '删除成功',
@@ -298,10 +417,20 @@
         this.$nextTick(() => {
           this.isLoadingImage = true;
           const currentOrigin = this.picList[this.currentOriginIndex].origin;
-          this.loadImage(currentOrigin.uri, () => {
-            // 默认打码操作
+          const currentMosaic = this.picList[this.currentOriginIndex].mosaic;
+          const ctx = this.$refs.canvas.getContext('2d');
+          this.loadImage((currentMosaic && currentMosaic.fileUri) || currentOrigin.fileUri, (img, canvasWidth, canvasHeight) => {
+            this.isLoadingImage = false;
+            this.$refs.canvas.width = canvasWidth;
+            this.$refs.canvas.height = canvasHeight;
+            this.$refs.layer.width = canvasWidth;
+            this.$refs.layer.height = canvasHeight;
+            this.ratio = canvasWidth / Math.min(MAX_WIDTH, canvasWidth);
+            ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
             this.handleMosaic();
-            // this.handleCrop();
+          }, () => {
+            this.isLoadingImage = false;
+            this.$refs.canvasContainer.classList.add('no-pic');
           });
         })
       },
@@ -345,42 +474,49 @@
           return;
         }
         const currentOrigin = this.picList[this.currentOriginIndex].origin;
+        const currentMosaic = this.picList[this.currentOriginIndex].mosaic || {};
         const url = this.$refs.canvas.toDataURL(currentOrigin.type);
         this.shrinkImage(url, currentOrigin.type, (src) => {
-          const blob = this.$dataURL2Blob(src);
-          const fileType = blob.type.replace('image/', '');
           // 保存图片到七牛
           this.isSavingPic = true;
-          postQiniu({
-            file: blob,
-            filename: currentOrigin.name,
-            token: this.$store.state.qiniu
-          }).then((response) => {
-            const res = response.data;
-            // 保存打码图片
-            saveMosaicPic(this.id, currentOrigin.proofMaterial, {
-              fileUri: res.key,
-              fileType: currentOrigin.type || fileType,
-              name: currentOrigin.name
-            }).then(({data, status}) => {
-              this.isSavingPic = false;
-              if (status === 201) {
-                this.$message({
-                  message: '保存成功',
-                  type: 'success'
-                });
-                this.getData(this.id);
-                this.paintHistory = [];
-              } else {
-                this.$message.error(data.message);
-              }
-            }, ({data}) => {
-              this.isSavingPic = false;
-              this.$message.error(data.message);
-            });
-          }, () => {
+          this.saveImageByUrl(src, currentOrigin.id, currentMosaic.id, currentOrigin.fileName, currentOrigin.type, () => {
             this.isSavingPic = false;
+            this.$message.success('保存成功');
+            this.getData(this.id);
+            this.paintHistory = [];
+          }, (msg) => {
+            this.isSavingPic = false;
+            if (msg) {
+              this.$message.error(msg);
+            }
+          });
+        })
+      },
+      saveImageByUrl(url, originId, oldMosaicId, fileName, fileType, cbOk, cbErr) {
+        const blob = this.$dataURL2Blob(url);
+        const type = blob.type.replace('image/', '');
+        postQiniu({
+          file: blob,
+          filename: fileName,
+          token: this.$store.state.qiniu
+        }).then((response) => {
+          const res = response.data;
+          // 保存打码图片
+          saveMosaicPic(this.id, originId, {
+            fileUri: res.key,
+            fileType: fileType || type,
+            name: fileName
+          }).then(({data, status}) => {
+            if (status === 201) {
+              cbOk && cbOk();
+            } else {
+              cbErr && cbErr(data.message);
+            }
+          }).catch(({ data }) => {
+            cbErr && cbErr(data.message);
           })
+        }).catch(() => {
+          cbErr && cbErr();
         })
       },
       handleDiscard() {
@@ -637,29 +773,20 @@
       /**
        * 载入图片
        * @param url 图片地址
-       * @param callback 载入完成后回调(可不传)
+       * @param canvas 加载图片canvas
+       * @param cbOk 载入完成后回调(可不传)
+       * @param cbErr 加载失败回调
        */
-      loadImage(url, callback = null) {
-        const context = this.$refs.canvas.getContext('2d');
+      loadImage(url, cbOk = null, cbErr = null) {
         const img = new Image();
         img.crossOrigin = 'Anonymous';
         img.onload = () => {
-          this.isLoadingImage = false;
           const canvasWidth = img.width;
           const canvasHeight = img.height / img.width * canvasWidth;
-          this.ratio = canvasWidth / Math.min(MAX_WIDTH, img.width);
-          this.$refs.canvas.width = canvasWidth;
-          this.$refs.canvas.height = canvasHeight;
-          this.$refs.layer.width = canvasWidth;
-          this.$refs.layer.height = canvasHeight;
-          context.drawImage(img, 0, 0, canvasWidth, canvasHeight);
-          if (callback !== null) {
-            callback()
-          }
+          cbOk && cbOk(img, canvasWidth, canvasHeight)
         };
         img.onerror = () => {
-          this.isLoadingImage = false;
-          this.$refs.canvasContainer.classList.add('no-pic');
+          cbErr && cbErr()
         };
         img.src = url;
       },
@@ -814,15 +941,14 @@
       handlePush() {
         const list = this.list.filter(_ => !_.isContent);
         const personalInfo = list.length ? JSON.stringify(list) : null;
-        pushLoanApplication(this.id, personalInfo).then(({ data }) => {
-          if (data.code === 200) {
-            this.$message({
-              message: '推送成功',
-              type: 'success'
-            });
-            this.$router.go(-1);
+        batchPushLoan([this.id], personalInfo).then(({ data }) => {
+          if (data.code === 200 && data.body && data.body.successCount === 1) {
+            setTimeout(() => {
+              this.$message.success('推送成功');
+              this.$router.go(-1);
+            }, 1000);
           } else {
-            this.$message.error(data.message || data.detail)
+            this.$message.error(data.detail || data.message || '推送失败')
           }
         }).catch(() => {})
       },
@@ -830,29 +956,87 @@
         this.$router.go(-1);
       },
       getData(id) {
-        getPicDetail(id).then(({data}) => {
+        getStoreDetail(id).then(({ data }) => {
           if (data.code === 200) {
-            const loan = data.body.loanApplication;
+            const loan = data.body;
             this.detail = [];
             this.detail.push(loan);
-            this.picList = data.body.originals.map(origin => ({
-              origin,
-              mosaic: data.body.mosaics.find(_ => _.originalId === origin.proofMaterial)
-            }));
-            this.list = [];
-            if (loan.channelPersonalInfo) {
-              if (JSON.parse(loan.channelPersonalInfo) instanceof Array) {
-                this.list = JSON.parse(loan.channelPersonalInfo);
+
+            getPushLoanDetail(id).then((response) => {
+              const res = response.data;
+              if (res.code === 200) {
+                this.list = [];
+                if (res.body) {
+                  if (JSON.parse(res.body) instanceof Array) {
+                    this.list = JSON.parse(res.body);
+                  }
+                }
+                if (loan.loanPartyKind === this.$enum.SUBJECT_PROP_PERSON) {
+                  this.getCustomizedField(id, loan.projectId, loan.loanPartyKind);
+                }
               }
-            }
-            if (loan.loanPartyKind === this.$enum.SUBJECT_PROP_PERSON) {
-              this.getCustomizedField(loan.loanParty, loan.loanKind);
-            }
+            })
           }
+        });
+
+        this.getMaterials(id).then(({ picList, pdfList }) => {
+          const keys = [];
+          picList.forEach(({ origin, mosaic }) => {
+            origin && origin.fileUri && keys.push(origin.fileUri);
+            mosaic && mosaic.fileUri && keys.push(mosaic.fileUri);
+          });
+
+          pdfList.forEach(pdf => {
+            pdf && pdf.fileUri && keys.push(pdf.fileUri);
+          });
+
+          getPicUrls(keys).then(({ data }) => {
+            if (data.code === 200) {
+              picList.forEach(({ origin, mosaic }) => {
+                origin && origin.fileUri && (origin.fileUri = data.body.shift());
+                mosaic && mosaic.fileUri && (mosaic.fileUri = data.body.shift());
+              });
+
+              pdfList.forEach(pdf => {
+                pdf && pdf.fileUri && (pdf.fileUri = this.$isUrl(pdf.fileUri) ? pdf.fileUri : (data.body.shift() + '&attname=' + encodeURIComponent(pdf.fileName)));
+              });
+
+              this.picList = picList;
+              this.pdfList = pdfList;
+            }
+          });
         })
       },
-      getCustomizedField(loanParty, projectName) {
-        getCustomizedFieldByParty(loanParty, projectName).then(({ data }) => {
+      getMaterials(loanId) {
+        return new Promise((resolve, reject) => {
+          getProofMaterialList(loanId).then(({ data }) => {
+            const materials = data.body && data.body.loanMaterials;
+            if (data.code === 200 && materials) {
+              let originals = [];
+              originals = originals.concat(materials[this.$enum.PROOF_MATERIAL_P_ID_CARD] || []);
+              originals = originals.concat(materials[this.$enum.PROOF_MATERIAL_O_LICENSE] || []);
+              originals = originals.concat(materials[this.$enum.PROOF_MATERIAL_O_OTHER] || []);
+              originals = originals.concat(materials[this.$enum.CUSTOMER_PROP_CAR] || []);
+              originals = originals.concat(materials[this.$enum.CUSTOMER_PROP_SHOP] || []);
+              originals = originals.concat(materials[this.$enum.CUSTOMER_PROP_ESHOP] || []);
+              originals = originals.concat(materials[this.$enum.PROOF_MATERIAL_P_LOAN_APP] || []);
+              const mosaic = materials[this.$enum.PROOF_MATERIAL_P_LOAN_APP_MOSAIC] || [];
+              const picList = originals.map(origin => ({
+                origin,
+                mosaic: mosaic.find(_ => _.id === origin.mosaicId)
+              }));
+              const pdfList = materials[this.$enum.PROOF_MATERIAL_P_LOAN_APP_PDF] || [];
+              resolve({ pdfList, picList })
+            } else {
+              reject();
+            }
+          }).catch((e) => {
+            reject(e);
+          });
+        })
+      },
+      getCustomizedField(loanId, projectName, loanPartyKind) {
+        getCustomizedFieldByParty(loanId, projectName, loanPartyKind).then(({ data }) => {
           if (data.code === 200 && data.body) {
             for (const code in data.body) {
               if (data.body.hasOwnProperty(code)) {
@@ -869,11 +1053,87 @@
     }
   };
 </script>
+
 <style lang="scss">
   .push {
+    .pdf-item {
+      display: inline;
+    }
+    .pdf-list {
+      margin: 0 0 0 10px;
+      padding: 0;
+      list-style: none;
+
+      li {
+        position: relative;
+        box-sizing: border-box;
+        padding: 0 30px;
+        width: 100%;
+        font-size: 14px;
+        line-height: 40px;
+        color: #606266;
+        border-radius: 4px;
+        transition: all .5s cubic-bezier(.55,0,.1,1);
+
+        a {
+          overflow: hidden;
+          display: block;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          margin-right: 150px;
+          padding-left: 4px;
+          color: #606266;
+          transition: color .3s;
+
+          &:hover {
+            color: #0068FF;
+          }
+        }
+
+        .btn-wrap {
+          position: absolute;
+          right: 30px;
+          top: 0;
+          font-size: 20px;
+          line-height: 40px;
+
+          .btn-cut {
+            cursor: pointer;
+            display: inline-block;
+
+            &:hover {
+              color: #0068FF;
+            }
+
+            &.is-disabled {
+              cursor: not-allowed;
+              color: #c0c4cc;
+            }
+          }
+
+          .el-icon-upload-success {
+            color: #67c23a;
+          }
+        }
+
+        &:hover {
+          background-color: #f5f7fa;
+        }
+      }
+    }
+    .no-pdf {
+      text-align: center;
+      border: 1px dashed #c0ccda;
+      width: 148px;
+      height: 40px;
+      line-height: 40px;
+      color: #8c939d;
+    }
+
     .wrapper {
       position: relative;
       height: 420px;
+      margin-top: 20px;
       overflow-x: scroll;
       overflow-y: hidden;
 
@@ -927,11 +1187,37 @@
             right: 0;
             top: 0;
             width: 50px;
+            height: 16px;
             font-size: 12px;
             color: #ffffff;
             text-align: right;
             background: #13ce66;
           }
+        }
+
+        &.is-pdf {
+          &:after {
+            content: 'PDF';
+            position: absolute;
+            display: block;box-sizing: border-box;
+            padding-left: 5px;
+            left: 0;
+            top: 0;
+            width: 36px;
+            height: 16px;
+            font-size: 12px;
+            color: #ffffff;
+            background: #e6a23c;
+          }
+        }
+
+        &.no-pic {
+          text-align: center;
+          border: 1px dashed #c0ccda;
+          width: 148px;
+          height: 148px;
+          line-height: 148px;
+          color: #8c939d;
         }
 
         img {
@@ -951,6 +1237,7 @@
           font-size: 20px;
           line-height: 36px;
           opacity: 0;
+          z-index: 1;
           transition: opacity .3s;
 
           i {
@@ -1035,6 +1322,10 @@
         top: 0;
         cursor: crosshair;
       }
+    }
+
+    .rotate-container {
+      display: none;
     }
 
     .shrink-area {
@@ -1131,7 +1422,3 @@
     }
   }
 </style>
-
-
-
-

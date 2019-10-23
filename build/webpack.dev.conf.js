@@ -58,22 +58,6 @@ module.exports = merge(baseWebpackConfig, {
       inject: true,
       chunks: ['manifest', 'vendor', 'account']
     }),
-    new HtmlWebpackPlugin({
-      filename: 'chain-assets.html',
-      template: './src/pages/chain-assets.html',
-      favicon: './src/pages/favicon.ico',
-      hash: true,
-      inject: true,
-      chunks: ['manifest', 'vendor', 'chain_assets']
-    }),
-    new HtmlWebpackPlugin({
-      filename: 'chain-funds.html',
-      template: './src/pages/chain-funds.html',
-      favicon: './src/pages/favicon.ico',
-      hash: true,
-      inject: true,
-      chunks: ['manifest', 'vendor', 'chain_funds']
-    }),
     new FriendlyErrorsPlugin(),
 
     new webpack.optimize.CommonsChunkPlugin({

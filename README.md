@@ -6,10 +6,12 @@
 
 本项目依赖于 Vue-cli 进行构建，但是运行和编译不需要 vue-cli 环境，只需要安装有 node，然后在项目根目录通过以下命令安装依赖：
 
-Tip：因为使用了 SCSS 进行预编译，所以项目会依赖 node-sass 模块，在 windows 下可能会出现模块安装问题，建议使用 cnpm 进行安装。
+Tips：
+1. 因为使用了 SCSS 进行预编译，项目会依赖 node-sass 模块，在 windows 下可能会出现模块安装问题，已在根目录.npmrc配置了node-sass安装地址，可配合 ```--registry=https://registry.npm.taobao.org``` 使用。
+2. 建议不要使用 ```cnpm``` 进行安装，element-ui会产生各种诡异bug。
 
 ``` bash
-$ npm install
+$ npm install --registry=https://registry.npm.taobao.org
 ```
 
 ### 开发
@@ -35,24 +37,29 @@ $ npm start
 │   └── main.js     // 程序入口文件，加载各种公共组件
 │   └── App.vue     // 页面入口文件
 │   └── style.scss  // 全局样式
-│   └── api         // API 配置文件
-│   └── assets      // 第三方静态文件
+│   └── api         // 公共api配置
 │   └── components  // vue公共组件
-│   └── pages       // 业务组件
-│   └── router      // 路由配置
-│   └── utils       // 工具库
+│   └── modules     // vue公共业务表单
+│   └── account     // 登录/激活
+│   └── assets      // 资产端
+│   └── center      // 资产中心
+│   └── funds       // 资金端
+│       └── api     // 业务api配置
+│       └── pages   // 业务组件
+│       └── router  // 路由名称 - 组件 的映射
+│   └── pages       // 入口html页面
+│   └── lib         // 工具库
 │   └── vuex        // vuex的状态管理
-├── static          // 静态文件，比如一些图片，json数据等
-├── test            // 测试
+├── static          // 静态文件，比如一些图片，需要下载/模板的文档等
 ├── .babelrc        // ES6语法编译配置
 ├── .editorconfig   // 定义代码格式
 ├── .eslintrc.json  // 代码风格检查
 ├── .gitignore      // git上传需要忽略的文件格式
+├── .npmrc          // npm地址配置
 ├── index.html      // 入口页面
 ├── README.md       // 项目说明
 ├── proxy.js        // 代理转发
 ├── package.json    // 项目基本信息
-├── 开放平台_白皮书   // 项目概况与中英文对照
 ```
 
 ## 分支管理策略
@@ -65,10 +72,15 @@ $ npm start
 
 ### 2. 开发分支 develop
 
-主分支只用来发布版本，日常开发则在 develop 分支上进行。
+主分支只用来发布版本，日常开发在 develop 分支上进行，push后自动同步到开发环境。
 
-### 3. 生产环境分支 publish
-推送后自动同步到生成环境（!!慎用）
+### 3. 测试分支 test
+
+push后到jenkins手动构建发布。
+
+### 4. 预发分支 pre-release
+
+push后到jenkins手动构建发布。
 
 ``` bash
 # 创建一个功能分支：

@@ -4,6 +4,8 @@
              :disabled="disabled"
              :placeholder="placeholder"
              :clearable="clearable"
+             :filterable="filterable"
+             :allow-create="allowCreate"
              @input="handleInput"
              @change="handleChange"
              @clear="handleClear"
@@ -13,7 +15,7 @@
                :label="option.text"
                :value="option.value"
                :key="option.value"
-               :disabled="option.disabled || (disabledOptions && disabledOptions.includes(option.value))"></el-option>
+               :disabled="option.disabled || (disabledOptions && disabledOptions.includes(option.value)) || (typeof disabledMethod === 'function' && disabledMethod(option))"></el-option>
   </el-select>
   <el-input v-else-if="!text"
             v-model="displayValue"
@@ -25,16 +27,23 @@
 </template>
 
 <script>
-  import {getSysEnum, getRegionEnum, getOrgList} from '../../api/enum'
-
-  const BOOLEAN_OPTIONS = [
-    { text: '是', value: true },
-    { text: '否', value: false }];
+  import {
+    getSysEnum,
+    getRegionEnum,
+    getOrgListFromCenter,
+    getAssetListFromFund,
+    getFundListFromAsset,
+    getIntentionFundListFromAsset,
+    getRelAssetListFromFund
+  } from '../../api/enum'
+  import {mapState} from 'vuex'
 
   export default {
     name: 'AtsSelect',
     props: {
       value: [String, Number, Boolean],
+      valueText: [String, Number, Boolean],
+      extraData: [String, Number, Boolean, Object],
       text: Boolean,
       type: {
         type: String, // enum, region, org, boolean
@@ -43,10 +52,14 @@
       kind: String,
       group: String,
       enumKey: String,
-      visible: Number,
+      visible: {
+        type: [Number, String],
+        default: 0
+      },
       sequence: Array,
       region: String,
-      org: String,
+      org: [Boolean, String],
+      orgType: String,
       orgStatus: Number,
       options: Array,
       mode: String,
@@ -55,6 +68,8 @@
       clearable: Boolean,
       noGroup: Boolean,
       disabledOptions: Array,
+      disabledMethod: Function,
+      hideDisabledOrg: Boolean,
       trueText: {
         type: String,
         default: '是'
@@ -62,6 +77,14 @@
       falseText: {
         type: String,
         default: '否'
+      },
+      filterable: {
+        type: Boolean,
+        default: false
+      },
+      allowCreate: {
+        type: Boolean,
+        default: false
       }
     },
     data() {
@@ -77,7 +100,10 @@
       displayValue() {
         const result = this.currentOptions.filter(_ => _.value === this.currentValue);
         return result.length > 0 ? result[0].text : this.currentValue;
-      }
+      },
+      ...mapState([
+        'businessType'
+      ])
     },
     watch: {
       value(val, oldValue) {
@@ -89,8 +115,9 @@
       currentOptions(val, oldVal) {
         if (((val && val.length) || oldVal && oldVal.length) && this.currentValue) {
           if (!val.some(_ => _.value === this.currentValue)) {
-            this.$emit('input', '');
+            this.setCurrentValue('');
           }
+          this.setSelected();
         }
       },
       region(val, oldValue) {
@@ -99,9 +126,6 @@
         } else {
           this.currentOptions = [];
         }
-        // if (oldValue) {
-        //   this.$emit('input', '')
-        // }
       },
       group(val, oldValue) {
         if (val) {
@@ -109,9 +133,6 @@
         } else {
           this.currentOptions = [];
         }
-        // if (oldValue) {
-        //   this.$emit('input', '')
-        // }
       },
       org(val, oldValue) {
         if (val) {
@@ -119,9 +140,11 @@
         } else {
           this.currentOptions = [];
         }
-        // if (oldValue) {
-        //   this.$emit('input', '')
-        // }
+      },
+      businessType(val) {
+        if (this.org && val) {
+          this.getOrgList(this.org, this.orgStatus)
+        }
       }
     },
     created() {
@@ -146,9 +169,18 @@
       setCurrentValue(value) {
         if (value !== this.currentValue) {
           this.currentValue = value;
-          this.$emit('change', value);
+          this.handleChange(value)
         }
         this.$emit('input', value);
+        this.setSelected();
+      },
+      setSelected() {
+        const selected = this.currentOptions.find(_ => _.value === this.currentValue);
+        this.$emit('update:valueText', selected ? selected.text : undefined);
+        this.$emit('update:extraData', selected ? selected.extraData : undefined);
+        if (this.org) {
+          this.$emit('update:orgType', selected ? selected.orgType : undefined);
+        }
       },
       handleInput(value) {
         this.setCurrentValue(value);
@@ -168,14 +200,35 @@
       getOptions(kind, group, enumKey, visible, sequence) {
         const enums = this.$store.state.enums;
         if (!sequence && enums && enums[`${kind}.${group}`]) {
-          this.currentOptions = enums[`${kind}.${group}`];
+          switch (visible) {
+            case 0: // 显示可用
+              this.currentOptions = enums[`${kind}.${group}`].filter(_ => _.visible === 0);
+              break;
+            case 1: // 显示禁用
+              this.currentOptions = enums[`${kind}.${group}`].filter(_ => _.visible === 1);
+              break;
+            default: // disable禁用枚举
+              this.currentOptions = enums[`${kind}.${group}`].map(_ => ({
+                ..._,
+                disabled: _.visible !== 0
+              }));
+              break;
+          }
           return;
         }
         const binarySequence = sequence ? this.$arrayToBinary(sequence) : null;
         getSysEnum(kind, group, enumKey, visible, binarySequence).then((response) => {
           const res = response.data;
           if (res.code === 200) {
-            this.currentOptions = res.body.map(_ => ({text: _.displayName, value: _.enumKey}));
+            switch (visible) {
+              case 0:
+              case 1:
+                this.currentOptions = res.body.map(_ => ({ text: _.displayName, value: _.enumKey }));
+                break;
+              default:
+                this.currentOptions = res.body.map(_ => ({ text: _.displayName, value: _.enumKey, disabled: _.visible !== 0 }));
+                break;
+            }
           } else {
             this.currentOptions = [];
           }
@@ -205,16 +258,59 @@
         })
       },
       getOrgList(orgType, statusEnable) {
-        getOrgList(orgType, statusEnable).then(response => {
-          const res = response.data;
-          if (res.code === 200) {
-            this.currentOptions = res.body.map(_ => ({text: _.name, value: _.partyId}))
-          } else {
-            this.currentOptions = [];
-          }
-        }, () => {
-          this.currentOptions = []
-        })
+        const orgId = this.$getLocalStorage('user').orgId;
+        const businessType = this.businessType;
+        if (!businessType) return;
+
+        let promise = null;
+        switch (businessType) {
+          case this.$enum.BUSINESS_CENTER:
+            promise = getOrgListFromCenter(orgType === true ? '' : orgType, statusEnable);
+            break;
+          case this.$enum.BUSINESS_ASSET:
+            if (orgType === this.$enum.BUSINESS_FUND) {
+              promise = getFundListFromAsset(orgId);
+            } else if (orgType === this.$enum.BUSINESS_INTENTION_FUND) {
+              promise = getIntentionFundListFromAsset(orgId);
+            }
+            break;
+          case this.$enum.BUSINESS_FUND:
+            if (orgType === this.$enum.BUSINESS_ASSET) {
+              promise = getAssetListFromFund(orgId);
+            } else if (orgType === this.$enum.BUSINESS_REL_ASSET) {
+              promise = getRelAssetListFromFund(orgId)
+            }
+            break;
+          default:
+            break;
+        }
+
+        if (promise) {
+          promise.then(response => {
+            const res = response.data;
+            if (res.code === 200) {
+              let options = [];
+              options = res.body.map(_ => (
+                {
+                  text: _.orgName,
+                  value: _.orgId,
+                  orgType: _.orgType,
+                  disabled: typeof this.disabledMethod === 'function' ? this.disabledMethod(_) : _.useFlag === 0
+                })
+              );
+              if (this.hideDisabledOrg) {
+                options = options.filter(_ => !_.disabled);
+              }
+              this.currentOptions = options;
+            } else {
+              this.currentOptions = [];
+            }
+          }, () => {
+            this.currentOptions = []
+          });
+        } else {
+          console.warn('业务端(' + this.businessType + ') 没有权限获取机构(' + orgType + ')')
+        }
       }
     }
   }

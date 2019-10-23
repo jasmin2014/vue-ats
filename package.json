@@ -9,6 +9,7 @@
     "start": "node build/dev-server.js",
     "build-dev": "node build/build.js dev",
     "build-test": "node build/build.js test",
+    "build-uat": "node build/build.js uat",
     "build": "node build/build.js",
     "prestart": "npm run hooks",
     "hooks": "node ./hooks/hooks.js"
@@ -16,9 +17,12 @@
   "dependencies": {
     "axios": "^0.16.2",
     "chart.js": "^2.7.0",
+    "echarts": "^4.1.0",
     "element-ui": "^2.0.3",
     "hotkeys-js": "^3.3.5",
+    "js-encrypt": "^2.3.4",
     "promise-polyfill": "^7.0.0",
+    "v-charts": "^1.19.0",
     "vue": "^2.4.2",
     "vue-router": "^2.7.0",
     "vuex": "^2.4.0"

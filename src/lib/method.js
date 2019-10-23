@@ -134,6 +134,12 @@ const $floatToPercentage = function (val) {
   return val;
 };
 
+const $floatToThousands = function (val) {
+  if (val !== null && typeof Number(val) === 'number') {
+    return val.toString().replace(/(\d)(?=(?:\d{3})+(\.\d*)?$)/g, '$1,')
+  }
+};
+
 /**
  * 加密显示身份证号(5-14位)
  * @param {String} str 身份证号
@@ -493,6 +499,8 @@ const $download = function (promise = {}, store) {
           }
         })
       }
+    } else if (response.status === 204) {
+      this.$message.warning(response.data ? response.data.message : '当前暂无数据');
     }
   }).catch(() => {})
 };
@@ -511,16 +519,87 @@ const $dfs = function (parent, callback = null) {
   })
 };
 
+function pad(val, len) {
+  val = String(val);
+  len = len || 2;
+  while (val.length < len) {
+    val = '0' + val;
+  }
+  return val;
+}
+const formatFlags = {
+  D: function(dateObj) {
+    return dateObj.getDay();
+  },
+  DD: function(dateObj) {
+    return pad(dateObj.getDay());
+  },
+  d: function(dateObj) {
+    return dateObj.getDate();
+  },
+  dd: function(dateObj) {
+    return pad(dateObj.getDate());
+  },
+  M: function(dateObj) {
+    return dateObj.getMonth() + 1;
+  },
+  MM: function(dateObj) {
+    return pad(dateObj.getMonth() + 1);
+  },
+  yy: function(dateObj) {
+    return String(dateObj.getFullYear()).substr(2);
+  },
+  yyyy: function(dateObj) {
+    return dateObj.getFullYear();
+  },
+  h: function(dateObj) {
+    return dateObj.getHours() % 12 || 12;
+  },
+  hh: function(dateObj) {
+    return pad(dateObj.getHours() % 12 || 12);
+  },
+  H: function(dateObj) {
+    return dateObj.getHours();
+  },
+  HH: function(dateObj) {
+    return pad(dateObj.getHours());
+  },
+  m: function(dateObj) {
+    return dateObj.getMinutes();
+  },
+  mm: function(dateObj) {
+    return pad(dateObj.getMinutes());
+  },
+  s: function(dateObj) {
+    return dateObj.getSeconds();
+  },
+  ss: function(dateObj) {
+    return pad(dateObj.getSeconds());
+  },
+  S: function(dateObj) {
+    return Math.round(dateObj.getMilliseconds() / 100);
+  },
+  SS: function(dateObj) {
+    return pad(Math.round(dateObj.getMilliseconds() / 10), 2);
+  },
+  SSS: function(dateObj) {
+    return pad(dateObj.getMilliseconds(), 3);
+  }
+};
+const token = /d{1,4}|M{1,4}|yy(?:yy)?|S{1,3}|Do|ZZ|([HhMsDm])\1?|[aA]|"[^"]*"|'[^']*'/g;
 /**
  * 日期格式化为yyyy-MM-dd字符串
  * @param {Date} date
  * @return {String} yyyy-MM-dd
  */
-const $dateStringify = function (date) {
-  const yyyy = date.getFullYear();
-  const MM = date.getMonth() + 1 > 9 ? date.getMonth() + 1 : `0${date.getMonth() + 1}`;
-  const dd = date.getDate();
-  return `${yyyy}-${MM}-${dd}`;
+const $dateStringify = function (date, format = 'yyyy-MM-dd') {
+  if (date) {
+    return format.replace(token, ($0) => {
+      return $0 in formatFlags ? formatFlags[$0](date) : $0.slice(1, $0.length - 1);
+    });
+  } else {
+    return '';
+  }
 };
 
 const $lastNMonth = function (date, n = 1) {
@@ -536,6 +615,31 @@ const $firstDayOfMonth = function (date) {
   const yyyy = date.getFullYear();
   const MM = date.getMonth() + 1 > 9 ? date.getMonth() + 1 : `0${date.getMonth() + 1}`;
   const dd = '01';
+  return `${yyyy}-${MM}-${dd}`;
+};
+/**
+ * 返回date所在月最后一天的日期yyyy-MM-dd字符串
+ * @param {Date} date
+ * @return {String} yyyy-MM-dd
+ */
+const MONTH_DAY_MAP = {
+  '01': 31,
+  '02': 28,
+  '03': 31,
+  '04': 30,
+  '05': 31,
+  '06': 30,
+  '07': 31,
+  '08': 31,
+  '09': 30,
+  '10': 31,
+  '11': 30,
+  '12': 31
+};
+const $lastDayOfMonth = function (date) {
+  const yyyy = date.getFullYear();
+  const MM = date.getMonth() + 1 > 9 ? date.getMonth() + 1 : `0${date.getMonth() + 1}`;
+  const dd = MM === '02' ? ((yyyy % 4) === 0 ? 29 : 28) : MONTH_DAY_MAP[MM];
   return `${yyyy}-${MM}-${dd}`;
 };
 
@@ -584,6 +688,7 @@ export default {
   $floatMultiply,
   $floatDivide,
   $floatToPercentage,
+  $floatToThousands,
   $encodeIdNo,
   $filterBoolean,
   $arrayToBinary,
@@ -602,6 +707,7 @@ export default {
   $dateStringify,
   $lastNMonth,
   $firstDayOfMonth,
+  $lastDayOfMonth,
   $saveRouterInstance,
   $getRouterInstance,
   $saveStoreInstance,

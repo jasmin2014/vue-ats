@@ -10,3 +10,10 @@ export const logout = () => {
 export const checkRoleBinded = (roleId) => {
   return http.common.get(`v1/login/user/check/${roleId}`)
 };
+export const changePassword = (password) => {
+  return http.common.put('v1/login/user/reset/pwd', null, {
+    params: {
+      password
+    }
+  })
+};

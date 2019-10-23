@@ -1,5 +1,6 @@
 <template>
-  <el-input v-model="currentValue"
+  <el-input v-if="type !== 'text'"
+            v-model="currentValue"
             ref="input"
             :class="readonly ? 'is-readonly' : ''"
             :readonly="readonly"
@@ -11,12 +12,19 @@
             :max="max"
             :step="step"
             :placeholder="placeholder"
+            :clearable="clearable"
             :debounce="0"
             @input="handleInput"
             @focus="handleFocus"
             @blur="handleBlur">
     <template v-if="unit" slot="append">{{ unit }}</template>
   </el-input>
+  <div v-else
+       class="el-input is-readonly">
+    <div class="el-input__inner">
+      {{ currentValue }}
+    </div>
+  </div>
 </template>
 
 <script>
@@ -36,7 +44,8 @@
         default: Number.MAX_SAFE_INTEGER
       },
       step: Number,
-      placeholder: String
+      placeholder: String,
+      clearable: Boolean
     },
     data() {
       return {
@@ -60,6 +69,15 @@
           innerInput.onkeypress = function (e) {
             const ev = e.which !== undefined ? e.which : window.event.keyCode;
             return /[0-9.\-]|(backspace)/i.test(e.key) || ev === 0;
+          };
+
+          // 数字输入框禁止滚轮改变数值
+          innerInput.addEventListener('DOMMouseScroll', (e) => {
+            e = e || window.event;
+            e.preventDefault();
+          });
+          innerInput.onmousewheel = function (e) {
+            return false;
           }
         }
       }
@@ -82,7 +100,9 @@
             this.currentValue = value;
           }
         }
-        this.$emit('input', value);
+        if (this.type !== 'text') {
+          this.$emit('input', value);
+        }
       },
       handleInput(value) {
         this.setCurrentValue(value);
@@ -105,3 +125,9 @@
     }
   }
 </script>
+
+<style lang="scss" scoped>
+  div.el-input__inner {
+    line-height: 38px;
+  }
+</style>

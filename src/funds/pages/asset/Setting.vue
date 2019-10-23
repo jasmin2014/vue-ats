@@ -1,687 +1,493 @@
-
 <template>
-  <div>
-    <el-form :model="setupOptions" ref="setupOptions" :rules="setupOptionsRules">
-    <el-row class="setup">
-      <el-col :span="4" class="rowtit">
-        资产风险等级
-      </el-col>
-      <el-col :span="20">
-          <ats-checkbox v-model="checkedEnums.assLevelsList" :kind="this.$enum.RISK_LEVEL" :group="this.$enum.RISK_LEVEL_GROUP" @change="handleCheckedLevels">
-          </ats-checkbox>
-      </el-col>
-    </el-row>
-    <el-row class="setup">
-      <el-col :span="4" class="rowtit">
-        资产类型
-      </el-col>
-      <el-col :span="20">
-        <ats-radio v-model="checkedEnums.assType" :kind="this.$enum.ASSET_TYPE" :group="this.$enum.ASSET_TYPE" @change="handleCheckedAsset">
-        </ats-radio>
-      </el-col>
-    </el-row>
-    <el-row class="setup">
-      <el-col :span="4" class="rowtit">
-        项目名称
-      </el-col>
-      <el-col :span="20">
-        <el-checkbox-group v-model="checkedEnums.loanTypeEnumList"
-                           @change="handleCheckedLoanType">
-          <el-checkbox v-for="item in defaultEnums.loanTypeEnumList" :label="item.value" :key="item.value">{{item.text}}</el-checkbox>
-        </el-checkbox-group>
-      </el-col>
-    </el-row>
-    <el-row class="setup">
-      <el-col :span="4" class="rowtit inputs">
-        借款金额（元）
-      </el-col>
-      <el-col :span="20" class="inputs">
-        <el-row>
-          <el-col :span="5">
-            <el-form-item prop="loanNumMin">
-              <ats-input type="number" v-model="setupOptions.loanNumMin" :min="0" :max="9999999999999998"></ats-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="2" class="center">~</el-col>
-          <el-col :span="5">
-            <el-form-item prop="loanNumMax">
-              <ats-input type="number" v-model="setupOptions.loanNumMax" :min="0" :max="9999999999999998"></ats-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-col>
-    </el-row>
-    <el-row class="setup">
-      <el-col :span="4" class="rowtit inputs">
-        借款期限（天）
-      </el-col>
-      <el-col :span="20" class="inputs">
-        <el-row>
-          <el-col :span="5">
-            <el-form-item prop="loanTermMin">
-              <ats-input type="number" v-model="setupOptions.loanTermMin" :min="0" :max="2147483648"></ats-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="2" class="center">~</el-col>
-          <el-col :span="5">
-            <el-form-item prop="loanTermMax">
-              <ats-input type="number" v-model="setupOptions.loanTermMax" :min="0" :max="2147483648"></ats-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-col>
-    </el-row>
-    <el-row class="setup">
-      <el-col :span="4" class="rowtit inputs">
-        资产评估价值
-      </el-col>
-      <el-col :span="20" class="inputs">
-        <el-row>
-          <el-col :span="5">
-            <el-form-item prop="selfAssetMin">
-              <ats-input type="number" v-model="setupOptions.selfAssetMin" :min="0" :max="9999999999999998"></ats-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="2" class="center">~</el-col>
-          <el-col :span="5">
-            <el-form-item prop="selfAssetMax">
-              <ats-input type="number" v-model="setupOptions.selfAssetMax" :min="0" :max="9999999999999998"></ats-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-col>
-    </el-row>
-    <el-row class="setup">
-      <el-col :span="4" class="rowtit inputs">
-        信用评分
-      </el-col>
-      <el-col :span="20" class="inputs">
-        <el-row>
-          <el-col :span="5">
-            <el-form-item prop="creditScoreMin">
-              <ats-input type="number" v-model="setupOptions.creditScoreMin" :min="0" :max="9999999999999998"></ats-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="2" class="center">~</el-col>
-          <el-col :span="5">
-            <el-form-item prop="creditScoreMax">
-              <ats-input type="number" v-model="setupOptions.creditScoreMax" :min="0" :max="9999999999999998"></ats-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-col>
-    </el-row>
-    <el-row class="setup">
-      <el-col :span="4" class="rowtit">
-        还款方式
-      </el-col>
-      <el-col :span="20">
-        <ats-checkbox v-model="checkedEnums.refundWayList" :kind="this.$enum.REPAY_WAY" :group="this.$enum.REPAY_WAY" @change="handleCheckedRefundWay">
-        </ats-checkbox>
-      </el-col>
-    </el-row>
-    <el-row class="setup">
-      <el-col :span="4" class="rowtit inputs">
-        年化利率范围(%)
-      </el-col>
-      <el-col :span="20" class="inputs">
-        <el-row>
-          <el-col :span="5">
-            <el-form-item prop="yearRatesMin">
-              <ats-input type="number" v-model="setupOptions.yearRatesMin"></ats-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="2" class="center">~</el-col>
-          <el-col :span="5">
-            <el-form-item prop="yearRatesMax">
-              <ats-input type="number" v-model="setupOptions.yearRatesMax"></ats-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-col>
-    </el-row>
-    <el-row class="setup">
-      <el-col :span="4" class="rowtit inputs">
-        所在地区
-      </el-col>
-      <el-col :span="20" class="inputs cities">
-        <div>
-          <span v-for="city in getCities.checkedcities">{{city.name}}</span>
-        </div>
-        <el-button type="text" @click="showChooseRegions"><i class="el-icon-edit"></i></el-button>
-      </el-col>
-    </el-row>
-    <el-row class="savesetup">
-      <el-button type="primary" @click="handlePostLoanConfig">保存设置</el-button>
-    </el-row>
-    <div class="choosecities" v-show="getCities.editCities">
-      <div class="mask"></div>
-      <div class="content rel">
-        <h2>地区选择</h2>
-        <div class="choose">
-          <ul class="clear">
-            <li v-for="item in getCities.provinces" @click="handleGetRegionEnum(item)">{{item.name}}</li>
-          </ul>
-        </div>
-        <div class="checkeds">
-          <el-checkbox-group v-model="getCities.myCities" class="clear" @change="handleCheckedCitiesChange">
-            <el-checkbox v-for="city in getCities.cities" :label="city" :key="city.region">{{city.name}}</el-checkbox>
-          </el-checkbox-group>
-        </div>
-        <div class="btns abs">
-          <el-button type="primary" @click="handleCheckedCitiesOk">确定</el-button>
-          <el-button @click="getCities.editCities=false">取消</el-button>
-        </div>
-      </div>
-    </div>
+  <div class="public-setting">
+    <el-form class="form"
+             ref="form"
+             :model="form"
+             :rules="rules"
+             label-position="left">
+      <el-form-item label="主体性质">
+        <ats-checkbox v-model="loanPartyKind"
+                      :kind="$enum.SUBJECT_PROP"
+                      :group="$enum.SUBJECT_PROP"></ats-checkbox>
+      </el-form-item>
+      <el-form-item label="资产风险等级">
+        <ats-checkbox v-model="assetLevelEnums"
+                      :kind="$enum.RISK_LEVEL"
+                      :group="$enum.RISK_LEVEL_GROUP"></ats-checkbox>
+      </el-form-item>
+      <el-form-item label="资产类型">
+        <ats-checkbox v-model="assetKindEnums"
+                      :kind="$enum.ASSET_TYPE"
+                      :group="$enum.ASSET_TYPE"></ats-checkbox>
+      </el-form-item>
+      <el-form-item label="业务类型" class="project-type">
+        <ats-checkbox v-model="loanKindEnums"
+                      class="checkbox-project-type"
+                      :kind="$enum.PROJECT_TYPE"
+                      :group="$enum.PROJECT_TYPE"></ats-checkbox>
+
+        <el-popover class="btn-project-type" placement="left-start" trigger="click">
+          <el-button slot="reference">说明</el-button>
+          <article class="intro">
+            <h4>业务类型说明</h4>
+            <p>1. 车辆信息类: 根据借款人提供的车辆信息, 并进行信息评估后达成借款人的借款诉求.</p>
+            <p>2. 消费类: 根据借款人的消费意愿, 提供短期, 小金额的借款诉求.</p>
+            <p>3. 工薪类: 根据借款人提供的社保, 公积金, 单位信息, 工资情况等信息, 达成的借款人借款诉求.</p>
+            <p>4. 保单类: 根据借款人提供已投保的保单信息, 从而达成的借款诉求.</p>
+            <p>5. 纯信用类: 不需要借款人提供任何信息, 资产方通过第三方或自身风控单纯评估后达成的借款诉求.</p>
+            <p>6. 虚拟网店类: 根据借款人提供的电商平台的商铺信息, 从而达成的借款诉求.</p>
+            <p>7. 实体企业类: 根据借款人提供的实体店铺或公司信息, 从而达成的借款诉求.</p>
+            <p>8. 房产类: 根据借款人提供的房产信息, 达成的借款诉求.</p>
+            <p>9. 学历类: 根据借款人提供的学历信息, 达成的借款诉求.</p>
+            <p>10. 实体设备类: 根据借款人提供的机械或硬件设备信息, 达成的借款诉求.</p>
+            <p>11. 装饰装潢类:根据借款人提供的装潢, 装饰, 装修信息, 达成的借款诉求.</p>
+            <p>12. 虚拟信息类: 根据借款人提供的虚拟账户或虚拟信息, 达成的借款诉求.</p>
+          </article>
+        </el-popover>
+      </el-form-item>
+      <el-form-item label="借款金额（元）" prop="loanNumMin" class="number">
+        <ats-input v-model="form.loanNumMin"
+                   type="number"
+                   style="width: 160px;"></ats-input>
+        <span class="divider"> - </span>
+        <ats-input v-model="form.loanNumMax"
+                   type="number"
+                   style="width: 160px;"></ats-input>
+      </el-form-item>
+      <el-form-item label="借款期限（天）" prop="loanTermMin" class="number">
+        <ats-input v-model="form.loanTermMin"
+                   type="number"
+                   style="width: 160px;"></ats-input>
+        <span class="divider"> - </span>
+        <ats-input v-model="form.loanTermMax"
+                   type="number"
+                   style="width: 160px;"></ats-input>
+      </el-form-item>
+      <el-form-item label="还款方式">
+        <ats-checkbox v-model="repayWayEnums"
+                      :kind="$enum.REPAY_WAY"
+                      :group="$enum.REPAY_WAY"></ats-checkbox>
+      </el-form-item>
+      <el-form-item label="年化利率范围（%）" prop="yearRatesMin" class="number">
+        <ats-input v-model="yearRatesMin"
+                   type="number"
+                   style="width: 160px;"></ats-input>
+        <span class="divider"> - </span>
+        <ats-input v-model="yearRatesMax"
+                   type="number"
+                   style="width: 160px;"></ats-input>
+      </el-form-item>
+      <el-form-item label="不接受地区" class="regions">
+        <el-button icon="fa fa-edit"
+                   class="is-circle btn-edit-regions"
+                   type="primary"
+                   plain
+                   @click="handleEditRegions"></el-button>
+        <ul class="region-list">
+          <li v-for="region in selectedRegionList" class="region-item">{{ region.name }}</li>
+        </ul>
+      </el-form-item>
+
+      <el-row type="flex" justify="center">
+        <el-button type="primary" @click="handleSave">保存设置</el-button>
+      </el-row>
     </el-form>
+
+    <el-dialog :visible.sync="dialog.visible"
+               class="dialog"
+               width="700px"
+               title="不接受地区选择"
+               @close="handleDialogClose">
+      <ul>
+        <li v-for="province in dialog.provinceList"
+            :class="{ active: dialog.currentProvince.region === province.region, selected: isProvinceSelected(province, dialog.selected) }"
+            @click="handleProvinceChange(province)">{{ province.name }}</li>
+      </ul>
+      <hr>
+      <el-checkbox-group v-model="dialog.selected">
+        <el-checkbox v-for="city in dialog.cityList"
+                     :key="city.region"
+                     :label="city.region">{{ city.name }}</el-checkbox>
+      </el-checkbox-group>
+
+      <el-row slot="footer" type="flex" justify="center">
+        <el-button type="primary" @click="handleSaveRegions">确定</el-button>
+        <el-button @click="handleCancelRegions">取消</el-button>
+      </el-row>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-  import {getRegionEnum,getSysEnum} from '../../../api/enum'
-  import {getLoanConfig, getCitiesByRegions, postLoanConfig} from '../../api/assetMgt';
-  import AtsRadio from "../../../components/input/Radio";
+  import {
+    getLoanConfig,
+    saveLoanConfig
+  } from '../../api/assetMgt';
+  import {
+    getRegionsByCode,
+    getRegionEnum
+  } from '../../../api/enum'
+
+  const PROVINCE_CITY_MAP = {};
+
   export default {
-    components: {
-      AtsRadio
-    },
     data() {
-      var inputNumber = (rule, value, callback) => {
-        if (value === null || value === '' || value === undefined || this.$valid.floatValidator(value, 2) && value >= 0 && value <= 9999999999999998) {
-          callback();
-        }else if(value < 0){
-          callback("输入的数字不能小于0");
-        }else if (value  > 9999999999999998 ) {
-          callback("输入的数字不能大于9999999999999998");
-        }else{
-          callback('请输入数字值并最多保留2位小数');
+      const numberValidator = (val, precise, preciseErrMsg) => {
+        preciseErrMsg = preciseErrMsg || `保留${precise}位小数`;
+        if (typeof val === 'number' && !isNaN(val)) {
+          if (val < 0 || val > 9999999999999998) {
+            return '范围0-9999999999999998'
+          } else if (!this.$valid.floatValidator(val, precise)) {
+            return preciseErrMsg;
+          }
         }
       };
-      var inputNumberMax = (rule, value, callback) => {
 
-        if (value === null || value === '' || value === undefined || this.$valid.floatValidator(value, 0) && value >= 0 && value <= 2147483648) {
-          callback();
-        }else if(value < 0){
-          callback("输入的数字不能小于0");
-        }else if (value  > 2147483648 ) {
-          callback("输入的数字不能大于2147483648");
-        }else{
-          callback("请输入整数值");
-        }
-
-      };
-      var inputNumberValue = (rule, value, callback) => {
-        if (value === null || value === '' || value === undefined || this.$valid.floatValidator(value, 0) && value >= 0 && value <= 9999999999999998) {
-          callback()
-        }else if(value < 0){
-          callback("输入的数字不能小于0");
-        }else if (value  > 9999999999999998 ) {
-          callback("输入的数字不能大于9999999999999998");
-        } else {
-          callback('请输入整数值')
-        }
-      };
       return {
-        setupOptionsRules: {
+        selectedRegionList: [],
+        form: {
+          id: null,
+          loanPartyKind: null,
+          assetLevelEnums: null,
+          assetKindEnums: null,
+          loanKindEnums: null,
+          loanNumMin: null,
+          loanNumMax: null,
+          loanTermMin: null,
+          loanTermMax: null,
+          repayWayEnums: null,
+          yearRatesMin: null,
+          yearRatesMax: null,
+          regions: null
+        },
+        rules: {
           loanNumMin: [
-            {validator: inputNumber, trigger: 'blur'}
-          ],
-          loanNumMax: [
-            {validator: inputNumber, trigger: 'blur'}
+            {
+              type: 'number',
+              trigger: 'blur',
+              validator: (rule, minVal, callback) => {
+                const maxVal = this.form.loanNumMax;
+                const minErrMsg = numberValidator(minVal, 2);
+                const maxErrMsg = numberValidator(maxVal, 2);
+                if (minErrMsg) {
+                  callback(minErrMsg);
+                } else if (maxErrMsg) {
+                  callback(maxErrMsg);
+                } else if (typeof minVal === 'number' && typeof maxVal === 'number' && minVal > maxVal) {
+                  callback('非法区间')
+                } else {
+                  callback();
+                }
+              }
+            }
           ],
           loanTermMin: [
-            {validator: inputNumberMax, trigger: 'blur'}
-          ],
-          loanTermMax: [
-            {validator: inputNumberMax, trigger: 'blur'}
-          ],
-          selfAssetMin: [
-            {validator: inputNumber, trigger: 'blur'}
-          ],
-          selfAssetMax: [
-            {validator: inputNumber, trigger: 'blur'}
-          ],
-          creditScoreMin: [
-            {validator: inputNumberValue, trigger: 'blur'}
-          ],
-          creditScoreMax: [
-            {validator: inputNumberValue, trigger: 'blur'}
-          ],
-          yearRatesMax: [
-            {validator: inputNumber, trigger: 'blur'}
+            {
+              type: 'number',
+              trigger: 'blur',
+              validator: (rule, minVal, callback) => {
+                const maxVal = this.form.loanTermMax;
+                const minErrMsg = numberValidator(minVal, 0, '请输入整数');
+                const maxErrMsg = numberValidator(maxVal, 0, '请输入整数');
+                if (minErrMsg) {
+                  callback(minErrMsg);
+                } else if (maxErrMsg) {
+                  callback(maxErrMsg);
+                } else if (typeof minVal === 'number' && typeof maxVal === 'number' && minVal > maxVal) {
+                  callback('非法区间')
+                } else {
+                  callback();
+                }
+              }
+            }
           ],
           yearRatesMin: [
-            {validator: inputNumber, trigger: 'blur'}
+            {
+              type: 'number',
+              trigger: 'blur',
+              validator: (rule, minVal, callback) => {
+                const maxVal = this.form.yearRatesMax;
+                const minErrMsg = numberValidator(minVal, 4, '保留2位小数');
+                const maxErrMsg = numberValidator(maxVal, 4, '保留2位小数');
+                if (minErrMsg) {
+                  callback(minErrMsg);
+                } else if (maxErrMsg) {
+                  callback(maxErrMsg);
+                } else if (typeof minVal === 'number' && typeof maxVal === 'number' && minVal > maxVal) {
+                  callback('非法区间')
+                } else {
+                  callback();
+                }
+              }
+            }
           ]
         },
-        defaultEnums:{
-          assLevelsList:[],
-          assTypeList:[],
-          loanTypeEnumList: [],
-          refundWayList: []
-        },
-        checkedEnums:{
-          assLevelsList:[],
-          assTypeList:[],
-          loanTypeEnumList: [],
-          refundWayList: [],
-          assType:'CREDIT'
-        },
-        setupOptions: {},
-        currentOptions:[],
-        getCities: {
-          editCities: false,
-          provinces: [],
-          myCities: [],
-          cities: [],
-          myCheckedCities:[],
-          checkedcities: [],
-          checkedeCitiesRegions: ''
+        dialog: {
+          visible: false,
+          provinceList: [],
+          cityList: [],
+          selected: [],
+          currentProvince: {}
         }
       }
     },
-    created() {
-      this.getLoanConfig();
-      this.getOptions(this.$enum.LOAN_TYPE,this.checkedEnums.assType, () => {
-        this.defaultEnums.loanTypeEnumList = this.currentOptions;
-      })
+    computed: {
+      loanPartyKind: {
+        get() {
+          return this.form.loanPartyKind ? this.form.loanPartyKind.split(',') : []
+        },
+        set(val) {
+          this.form.loanPartyKind = val && val.length ? val.join(',') : null;
+        }
+      },
+      assetLevelEnums: {
+        get() {
+          return this.form.assetLevelEnums ? this.form.assetLevelEnums.split(',') : []
+        },
+        set(val) {
+          this.form.assetLevelEnums = val && val.length ? val.join(',') : null;
+        }
+      },
+      assetKindEnums: {
+        get() {
+          return this.form.assetKindEnums ? this.form.assetKindEnums.split(',') : []
+        },
+        set(val) {
+          this.form.assetKindEnums = val && val.length ? val.join(',') : null;
+        }
+      },
+      loanKindEnums: {
+        get() {
+          return this.form.loanKindEnums ? this.form.loanKindEnums.split(',') : []
+        },
+        set(val) {
+          this.form.loanKindEnums = val && val.length ? val.join(',') : null;
+        }
+      },
+      repayWayEnums: {
+        get() {
+          return this.form.repayWayEnums ? this.form.repayWayEnums.split(',') : []
+        },
+        set(val) {
+          this.form.repayWayEnums = val && val.length ? val.join(',') : null;
+        }
+      },
+      yearRatesMin: {
+        get() {
+          return typeof this.form.yearRatesMin === 'number' && !isNaN(this.form.yearRatesMin) ? this.$floatMultiply(this.form.yearRatesMin, 100) : null;
+        },
+        set(val) {
+          this.form.yearRatesMin = typeof val === 'number' && !isNaN(val) ? this.$floatDivide(val, 100) : null;
+        }
+      },
+      yearRatesMax: {
+        get() {
+          return typeof this.form.yearRatesMax === 'number' && !isNaN(this.form.yearRatesMax) ? this.$floatMultiply(this.form.yearRatesMax, 100) : null;
+        },
+        set(val) {
+          this.form.yearRatesMax = typeof val === 'number' && !isNaN(val) ? this.$floatDivide(val, 100) : null;
+        }
+      }
     },
+
+    created() {
+      this.getDetail();
+      this.getRegions();
+    },
+
     methods: {
-      showChooseRegions(){
-        this.handleGetRegionEnum('86');
-        this.getCities.editCities = true;
-        if(this.getCities.checkedcities.length > 0){
-          this.getCities.myCheckedCities = this.getCities.checkedcities;
-        }
-      },
-      handeGetCitiesByRegions(regions){
-        getCitiesByRegions(regions).then(response => {
-          const res = response.data;
-          if(res.code === 200){
-            setTimeout(() => {
-              this.getCities.checkedcities = res.body;
-              this.filterCityByProvince(res.body);
-            },1000);
-          }
-        }, () => {})
-      },
-      handleGetRegionEnum(region){
-        let _this = this;
-        let _region = ''
-        if(region === '86'){
-          _region = region;
-        }else{
-          _region = region.region;
-        }
-        getRegionEnum(_region).then(response => {
-          let res = response.data;
-          if(res.code === 200){
-            if(_region === '86'){
-              this.getCities.provinces = res.body;
-            } else{
-              this.getCities.cities = res.body;
-              this.filterCityByProvince(this.getCities.cities);
-
-              let citiyRegions = '';
-              let _regionsArr = this.getCities.checkedeCitiesRegions.split(',');
-
-              res.body.forEach(item => {
-                citiyRegions += item.region + ',';
-              });
-              citiyRegions = citiyRegions.substring(0, citiyRegions.length - 1);
-              let _citiyRegions = citiyRegions.split(",");
-
-              for(let j = 0; j < _citiyRegions.length; j++){
-                for( let i = 0; i < _regionsArr.length; i ++){
-                  if(_regionsArr[i] === _citiyRegions[j]){
-                    _this.getCities.myCities.push(res.body[j]);
-                  }
-                }
-              }
-
-            }
-          }
-        }, () => {})
-      },
-      filterEnums(enumsString,enumList){
-        enumsString.split(',').forEach( (item) => {
-          enumList.push(item);
-        });
-      },
-      getLoanConfig(){
-        getLoanConfig().then(response => {
-          let res = response.data;
-          if(res.code === 200 && res.body){
-            if(res.body.regions){
-
-              this.getCities.checkedeCitiesRegions = res.body.regions;
-//              this.getCities.defaultCitiesRegions = res.body.regions;
-
-              this.handeGetCitiesByRegions(res.body.regions);
-            }
-            this.setupOptions = res.body;
-
-            if (res.body.yearRatesMin !== 0) {
-              this.setupOptions.yearRatesMin = (res.body.yearRatesMin) ? parseFloat((this.$floatMultiply(res.body.yearRatesMin, 100)).toFixed(2)) : '';
-            } else {
-              this.setupOptions.yearRatesMin = res.body.yearRatesMin.toString();
-            }
-
-            if (res.body.yearRatesMax !== 0) {
-              this.setupOptions.yearRatesMax = (res.body.yearRatesMax) ? parseFloat((this.$floatMultiply(res.body.yearRatesMax, 100)).toFixed(2)) : '';
-            } else {
-              this.setupOptions.yearRatesMax = res.body.yearRatesMax.toString();
-            }
-
-            if (res.body.assetLevelEnums) {
-              this.filterEnums(res.body.assetLevelEnums, this.checkedEnums.assLevelsList);
-            }
-            if (res.body.assetKindEnums) {
-              this.filterEnums(res.body.assetKindEnums, this.checkedEnums.assTypeList);
-            }
-            if (res.body.loanKindEnums) {
-              this.filterEnums(res.body.loanKindEnums, this.checkedEnums.loanTypeEnumList);
-            }
-            if (res.body.repayWayEnums) {
-              this.filterEnums(res.body.repayWayEnums, this.checkedEnums.refundWayList);
-            }
-          }
-        }, response => {})
-      },
-      handleCheckedAsset(val){
-        this.checkedEnums.assType = val;
-        this.getOptions(this.$enum.LOAN_TYPE, val,() => {
-          this.defaultEnums.loanTypeEnumList = this.currentOptions;
-          this.setupOptions.assetKindEnums = '';
-        });
-      },
-      getOptions(kind, group, callback) {
-        const enums = this.$store.state.enums;
-        if (enums && enums[`${kind}.${group}`]) {
-          this.currentOptions = enums[`${kind}.${group}`];
-        }
-        getSysEnum(kind, group).then((response) => {
-          const res = response.data;
-          if (res.code === 200) {
-            this.currentOptions = res.body.map(_ => ({text: _.displayName, value: _.enumKey}));
-            callback&&callback()
-          }
-        }, () => {})
-      },
-      checkedItems(value){
-        let _items = '';
-        value.forEach(item => {
-          _items += item + ',';
-        });
-        _items = _items.substring(0, _items.length - 1);
-        return _items;
-      },
-      handleCheckedLevels(value){
-        this.setupOptions.assetLevelEnums = this.checkedItems(value);
-      },
-      handleCheckedLoanType(value){
-        this.setupOptions.loanKindEnums = this.checkedItems(value);
-      },
-      handleCheckedRefundWay(value){
-        this.setupOptions.repayWayEnums = this.checkedItems(value);
-      },
-      filterCityByProvince(cities){
-        cities.forEach(item => {
-          switch (item.region) {
-            case '110100' :
-              item.name = '北京市';
-              break;
-            case '110200' :
-              item.name = '北京(县)';
-              break;
-            case '120100' :
-              item.name = '天津市';
-              break;
-            case '120200' :
-              item.name = '天津(县)';
-              break;
-            case '310100' :
-              item.name = '上海市';
-              break;
-            case '310200' :
-              item.name = '上海(县)';
-              break;
-            case '500100' :
-              item.name = '重庆市';
-              break;
-            case '500200' :
-              item.name = '重庆(县)';
-              break;
-            case '500300' :
-              item.name = '重庆(区)';
-              break;
-            default :
-              break;
-          }
-        })
-      },
-      filterRepeatCities(myArray) {
-        let _rgn = '', newArr = [];
-        myArray.forEach(item => {
-          _rgn += item.region + ',';
-        });
-        _rgn = _rgn.substring(0, _rgn.length - 1);
-        newArr = Array.from(new Set(_rgn.split(',')));
-
-        let myRegions = '';
-        newArr.forEach(item => {
-          myRegions += item + ',';
-        })
-        myRegions = myRegions.substring(0, myRegions.length -1);
-        return myRegions;
-      },
-      handleCheckedCitiesChange(value) {
-        let myRegions = this.filterRepeatCities(value);
-
-        if(myRegions === ''){
-          this.getCities.myCheckedCities = [];
-          return;
-        }
-        getCitiesByRegions(myRegions).then(response => {
-          const res = response.data;
-          if (res.code === 200){
-            this.getCities.myCheckedCities = res.body;
-            this.filterCityByProvince(res.body);
-          }
-        }, (response) => {});
-      },
-      handleCheckedCitiesOk(){
-        if(this.getCities.myCheckedCities.length === 0) {
-          this.getCities.checkedcities = [];
-          this.getCities.editCities = false;
-          this.getCities.checkedeCitiesRegions = '';
-          this.setupOptions.regions = '';
-          return;
-        }
-        this.getCities.editCities = false;
-        this.getCities.checkedeCitiesRegions = '';
-        this.getCities.myCheckedCities.forEach(item => {
-          this.getCities.checkedeCitiesRegions += item.region + ','
-        });
-        this.getCities.checkedeCitiesRegions = this.getCities.checkedeCitiesRegions.substring(0, this.getCities.checkedeCitiesRegions.length - 1);
-        this.setupOptions.regions = this.getCities.checkedeCitiesRegions;
-
-        this.handeGetCitiesByRegions(this.getCities.checkedeCitiesRegions);
-      },
-      handlePostLoanConfig(){
-        let _yearRatesMin = this.setupOptions.yearRatesMin;
-        let _yearRatesMax = this.setupOptions.yearRatesMax;
-
-        let _regions = '';
-        if (this.getCities.checkedcities.length > 0) {
-          this.getCities.checkedcities.forEach((item) => {
-            _regions += item.region + ',';
-          });
-          this.setupOptions.regions = _regions.substring(0, _regions.length - 1);
-        } else {
-          this.setupOptions.regions = '';
-        }
-
-        const setupOptions = this.$objFilter(this.$deepcopy(this.setupOptions), _ => _ !== '');
-
-        if(_yearRatesMin === 0) {
-          setupOptions.yearRatesMin = 0;
-        }else if(_yearRatesMin === '') {
-          setupOptions.yearRatesMin = null;
-        }else{
-          setupOptions.yearRatesMin = this.$floatDivide(_yearRatesMin, 100);
-        }
-
-        if(_yearRatesMax === 0) {
-          setupOptions.yearRatesMax = 0;
-        }else if(_yearRatesMax === '') {
-          setupOptions.yearRatesMax = null;
-        }else{
-          setupOptions.yearRatesMax = this.$floatDivide(_yearRatesMax, 100);
-        }
-
-        this.$refs['setupOptions'].validate((valid) => {
+      handleSave() {
+        this.$refs.form.validate(valid => {
           if (valid) {
-            postLoanConfig(setupOptions).then(response => {
-              if(response.data.code === 201){
-                setTimeout(() => {
-                  this.$message({
-                    message: "资产准入数据设置成功",
-                    type: 'success'
-                  });
-                  this.getLoanConfig();
-                  this.$refs['setupOptions'].resetFields();
-                },1000)
-              }
-            },(response) => {});
-          } else {
-            return false;
+            this.save(this.$deepcopy(this.form))
           }
-        });
+        })
+      },
+      handleEditRegions() {
+        this.dialog.visible = true;
+        this.dialog.selected = this.form.regions ? this.form.regions.split(',') : [];
+      },
+      handleProvinceChange(province) {
+        this.dialog.currentProvince = province;
+        this.getRegions(province.region);
+      },
+      handleSaveRegions() {
+        this.form.regions = this.dialog.selected && this.dialog.selected.length ? this.dialog.selected.join(',') : null;
+        this.selectedRegionList = [];
+        this.getRegionName(this.form.regions);
+        this.dialog.visible = false;
+      },
+      handleCancelRegions() {
+        this.dialog.visible = false;
+      },
+      handleDialogClose() {
+        this.dialog.selected = [];
+        this.dialog.cityList = [];
+        this.dialog.currentProvince = {};
+      },
 
-
+      isProvinceSelected(province, selected) {
+        return selected.some(_ => _.startsWith(province.region.slice(0, 2)))
+      },
+      save(obj) {
+        console.log(obj);
+        saveLoanConfig(obj).then(({ data }) => {
+          if (data.code === 201) {
+            this.$message.success('保存成功');
+            this.getDetail();
+          }
+        })
+      },
+      getDetail() {
+        getLoanConfig().then(({ data }) => {
+          if (data.code === 200) {
+            if (data.body) {
+              this.form = data.body;
+              if (data.body.regions) {
+                this.getRegionName(data.body.regions)
+              }
+            }
+          } else {
+            this.$message.error(data.message);
+          }
+        })
+      },
+      getRegionName(regions) {
+        getRegionsByCode(regions).then(({ data }) => {
+          if (data.code === 200) {
+            this.selectedRegionList = data.body;
+          }
+        })
+      },
+      getRegions(region = '86') {
+        if (PROVINCE_CITY_MAP[region]) {
+          if (region === '86') {
+            this.dialog.provinceList = PROVINCE_CITY_MAP[region];
+          } else {
+            this.dialog.cityList = PROVINCE_CITY_MAP[region];
+          }
+          return;
+        }
+        getRegionEnum(region).then(({ data }) => {
+          if (data.code === 200) {
+            PROVINCE_CITY_MAP[region] = data.body;
+            if (region === '86') {
+              this.dialog.provinceList = data.body;
+            } else {
+              this.dialog.cityList = data.body;
+            }
+          }
+        })
       }
     }
   }
-
 </script>
-<style>
-  .clear {
-    zoom:1;
-  }
-  .clear:after,.clear:before {
-    clear: both;
-    content: '';
-    height:0;
-    line-height:0;
-    display: table;
-  }
-.setup {
-  display: flex;
-  width: 80%;
-  margin: 20px auto;
-  border-left:1px solid #dfe6ec;
-  border-top:1px solid #dfe6ec;
-}
-.setup > .el-col {
-  line-height:40px;
-  border-right:1px solid #dfe6ec;
-  border-bottom:1px solid #dfe6ec;
-  padding-left:10px;
-}
-.setup > .el-col.inputs {
-  padding: 10px 0 10px 10px;
-}
-.setup > .el-col .center {
-  text-align: center;
-}
-.cities {
-  position: relative;
-}
-.cities >div span {
-  margin-right:10px;
-}
-.cities .el-button--text {
-  position: absolute;
-  right:20px;
-  top: 50%;
-  margin-top: -18px;
-  font-size: 100%;
-}
-.savesetup {
-  text-align: center;
-  padding-bottom: 50px;
-}
 
-.choosecities,.choosecities .mask {
-  width: 100%;
-  height:100%;
-  left:0;
-  top:0;
-
-}
-.choosecities {
-  position: fixed;
-  z-index: 99;
-}
-.choosecities .mask {
-  position: absolute;
-  z-index: 100;
-  background: rgba(0,0,0,0.3);
-}
-.choosecities  .content {
-  width: 600px;
-  padding-bottom: 70px;
-  position: absolute;
-  left:50%;
-  top:50%;
-  z-index: 9999;
-  margin: -200px 0 0 -300px;
-  background: #fff;
-  -webkit-border-radius: 8px;
-  -moz-border-radius: 8px ;
-  border-radius: 8px;
-}
-.choosecities  .content h2 {
-  height: 40px;
-  line-height:40px;
-  font-size:120%;
-  font-weight:normal;
-  padding-left:20px;
-  margin:0;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-  background: #e5e5e5;
-}
-.el-checkbox-group,.el-radio-group {
-  padding: 0 20px;
-  line-height: 40px;
-}
-.el-checkbox-group .el-checkbox, .el-radio-group .el-radio{
-  float: left;
-  margin:0 20px 0 0;
-}
-  .choose {
-    border-bottom:1px solid #ddd;
-    padding: 0 0 10px 0;
-  }
-  .choose >ul li {
-    float: left;
-    list-style: none;
-    margin-right: 15px;
-    line-height: 40px;
-    color: #5a5e66;
-    font-size: 14px;
-  }
-  .btns {
+<style lang="scss">
+  .public-setting {
+    margin: 0 auto;
     width: 80%;
-    position: absolute;
-    bottom:20px;
-    left:10%;
-    text-align: center;
-  }
-  .btns .el-button {
-    padding: 10px 30px;
+
+    .form {
+      .el-form-item {
+        display: flex;
+        border: 1px solid #dfe6ec;
+
+        &.number, &.regions {
+          .el-form-item__label, .el-form-item__content {
+            padding-top: 8px;
+            padding-bottom: 8px;
+          }
+        }
+
+        &.project-type {
+          .el-form-item__content {
+            position: relative;
+          }
+
+          .checkbox-project-type {
+            padding-right: 60px;
+          }
+
+          .btn-project-type {
+            position: absolute;
+            right: 20px;
+            top: 8px;
+          }
+        }
+      }
+
+      .el-form-item__label {
+        padding: 0 20px;
+        width: 180px;
+        border-right: 1px solid #dfe6ec;
+        background: #eef1f6;
+      }
+
+      .el-form-item__content {
+        padding: 0 20px;
+        width: calc(100% - 180px);
+
+        .divider {
+          text-align: center;
+          display: inline-block;
+          width: 30px;
+        }
+      }
+
+      .btn-edit-regions {
+        float: left;
+      }
+
+      .region-list {
+        margin: 0 0 0 60px;
+        padding: 0;
+      }
+
+      .region-item {
+        display: inline-block;
+
+        &:after {
+          content: '、';
+        }
+
+        &:last-child:after {
+          display: none;
+        }
+      }
+    }
+
+    .dialog {
+      hr {
+        margin: 20px 0;
+        border: none;
+        border-bottom: 1px solid #dfe6ec;
+      }
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+
+        li {
+          display: inline-block;
+          margin-top: 10px;
+          margin-right: 15px;
+          padding: 4px 12px;
+          background: #eef1f6;
+          border: 1px solid #eef1f6;
+          border-radius: 2px;
+          cursor: pointer;
+
+          &.active {
+            color: #0068ff;
+            border-color: #dfe6ec;
+          }
+
+          &.selected {
+            border-color: #0068ff;
+          }
+        }
+      }
+    }
   }
 </style>

@@ -17,6 +17,7 @@
           <el-form-item label="机构">
             <ats-select v-model="search.orgManagerId"
                         :org="search.appId || this.$enum.BUSINESS_ALL"
+                        :disabled-method="() => false"
                         placeholder="选择机构"
                         clearable>
             </ats-select>
@@ -24,7 +25,8 @@
         </el-col>
         <el-col :span="5">
           <el-form-item label="关键词">
-            <el-input v-model="search.roleName" placeholder="角色名称"></el-input>
+            <el-input v-model="search.roleName" placeholder="角色名称"
+                      clearable></el-input>
           </el-form-item>
         </el-col>
         <el-col :span="3">
@@ -62,8 +64,9 @@
     </el-table>
 
     <el-row type="flex" justify="center" class="mgt20">
-      <el-pagination layout="prev, next" :total="pageTotal" :page-size="search.pageSize"
-                     @current-change="getData"></el-pagination>
+      <el-pagination :total="pageTotal" :page-size="search.pageSize"
+                     layout="total, prev, pager, next, jumper, sizes" :page-sizes="[20, 50, 100]"
+                     @current-change="getData" @size-change="handlePageSizeChange"></el-pagination>
     </el-row>
 
     <el-dialog :visible.sync="showDialog"
@@ -148,6 +151,10 @@
         this.mode = 'CREATE';
         this.showDialog = true;
       },
+      handlePageSizeChange(size) {
+        this.search.pageSize = size;
+        this.getData(this.search.pageNumber)
+      },
       handleDetail(row) {
         this.mode = 'VIEW';
         this.getDetail(row.roleId);
@@ -176,7 +183,9 @@
                 });
                 this.getData(this.search.currentPage)
               }
-            }, () => {})
+            }, () => {
+              this.getData(this.search.currentPage)
+            })
           }).catch(() => {})
         }, () => {})
       },

@@ -40,7 +40,7 @@
       <el-row>
         <el-col :span="8">
           <el-form-item label="借款利率">
-            <ats-input v-model="repayYearRate" :mode="mode"
+            <ats-input v-model="repayIntRate" :mode="mode"
                        type="number" unit="%" :step="0.01"></ats-input>
           </el-form-item>
         </el-col>
@@ -74,7 +74,7 @@
           </el-form-item>
         </el-col>
         <el-col :span="8">
-          <el-form-item label="逾期管理费率">
+          <el-form-item label="逾期管理费日利率">
             <ats-input v-model="penaltyManageRate" :mode="mode"
                        type="number" unit="%"
                        :min="0" :max="100" :step="0.01"></ats-input>
@@ -90,7 +90,7 @@
           </el-form-item>
         </el-col>
         <el-col :span="8">
-          <el-form-item label="坏账管理费率">
+          <el-form-item label="坏账管理费日利率">
             <ats-input v-model="badDebtManageRate" :mode="mode"
                        type="number" unit="%"
                        :min="0" :max="100" :step="0.01"></ats-input>
@@ -151,7 +151,7 @@
           repayTerms: 0,
           repayTimeType: '',
           repayTime: 0,
-          repayYearRate: 0,
+          repayIntRate: 0,
           penaltyRate: 0,
           defaultsRate: 0,
           initialFee: 0,
@@ -214,18 +214,18 @@
       }
     },
     computed: {
-      repayYearRate: {
+      repayIntRate: {
         get() {
-          if (typeof this.currentValue.repayYearRate === 'number') {
-            return this.$floatMultiply(this.currentValue.repayYearRate, 100)
+          if (typeof this.currentValue.repayIntRate === 'number') {
+            return this.$floatMultiply(this.currentValue.repayIntRate, 100)
           }
           return ''
         },
         set(val) {
           if (val === '') {
-            this.currentValue.repayYearRate = null;
+            this.currentValue.repayIntRate = null;
           } else {
-            this.currentValue.repayYearRate = this.$floatDivide(val, 100);
+            this.currentValue.repayIntRate = this.$floatDivide(val, 100);
           }
         }
       },

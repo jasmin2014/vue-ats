@@ -37,7 +37,8 @@
         </el-col>
         <el-col :span="7">
           <el-form-item label="关键词">
-            <el-input v-model="search.searchKeyword" placeholder="借贷编号/客户姓名"></el-input>
+            <el-input v-model="search.searchKeyword" placeholder="借款编号/客户姓名/协议编号"
+                      clearable></el-input>
           </el-form-item>
         </el-col>
         <el-col :span="3">
@@ -58,10 +59,9 @@
     </el-row>
     <!--分页-->
     <el-row type="flex" justify="center" class="mgt20">
-      <el-pagination @current-change="getList"
-                     :page-size="search.pageSize"
-                     layout="prev, next"
-                     :total="totalRecord"></el-pagination>
+      <el-pagination :total="totalRecord" :page-size="search.pageSize"
+                     layout="total, prev, pager, next, jumper, sizes" :page-sizes="[20, 50, 100]"
+                     @current-change="getData" @size-change="handlePageSizeChange"></el-pagination>
     </el-row>
   </div>
 </template>
@@ -86,16 +86,20 @@
         },
         table: [
           {
-            label: '借贷编号',
+            label: '借款编号',
             prop: 'loanApplicationNo'
           },
           {
             label: '资金端',
-            prop: 'fundName'
+            prop: 'fundOrgName'
+          },
+          {
+            label: '协议编号',
+            prop: 'contract'
           },
           {
             label: '资产渠道',
-            prop: 'assetChannel'
+            prop: 'assetOrgName'
           },
           {
             label: '主体性质',
@@ -113,8 +117,13 @@
           },
           {
             label: '项目名称',
-            prop: 'loanKind',
+            prop: 'projectName',
             formatter: (row, col, value) => this.$filter(value, this.$enum.LOAN_TYPE, row.assetKind)
+          },
+          {
+            label: '业务类型',
+            prop: 'projectType',
+            formatter: (row, col, value) => this.$filter(value, this.$enum.PROJECT_TYPE, this.$enum.PROJECT_TYPE)
           },
           {
             label: '还款方式',
@@ -131,10 +140,10 @@
             prop: 'repayTimeType',
             formatter: (row, col, value) => `${row.repayTime}${this.$filter(value, this.$enum.TERM_UNIT, this.$enum.TERM_UNIT)}`
           },
-          {
-            label: '放款金额(元)',
-            prop: 'loanAmount'
-          },
+          // {
+          //   label: '借款金额(元)',
+          //   prop: 'loanAmount'
+          // },
           {
             label: '期数',
             prop: 'term',
@@ -221,17 +230,21 @@
       }
     },
     created() {
-      this.getList(1);
+      this.getData(1);
     },
     methods: {
       handleSearch() {
-        this.getList(1);
+        this.getData(1);
       },
       handleDownload() {
         const search = this.$deepcopy(this.search);
         this.$download(downloadShouldRepayBillList(search), this.$store);
       },
-      getList(index) {
+      handlePageSizeChange(size) {
+        this.search.pageSize = size;
+        this.getData(this.search.pageNumber)
+      },
+      getData(index) {
         const search = this.$objFilter(this.$deepcopy(this.search), _ => _ !== '');
         search.pageNumber = index;
         getShouldRepayBillList(search).then(response => {

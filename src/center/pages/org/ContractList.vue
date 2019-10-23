@@ -20,7 +20,7 @@
     watch: {
       protocolList(val) {
         if (val) {
-          this.protocol = val.map(_ => ({ name: _.name, url: _.uri }));
+          this.protocol = val.map(_ => ({ name: _.fileName, url: _.fileUri, type: _.fileType }));
         }
       }
     }

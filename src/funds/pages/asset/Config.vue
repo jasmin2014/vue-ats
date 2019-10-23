@@ -2,7 +2,7 @@
   <div class="config">
     <h4><span>验证内容</span></h4>
     <el-table :data="list" border>
-      <el-table-column label="项目名称" prop="projectDesc" align="center" width="300"></el-table-column>
+      <el-table-column label="业务类型" prop="projectDesc" align="center" width="300"></el-table-column>
       <el-table-column label="验证内容" align="center">
         <template slot-scope="scope">
           <div v-for="col in scope.row.columns">{{ col.fieldName }}</div>

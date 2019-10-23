@@ -2,8 +2,14 @@
 <template>
   <div class="header">
     <div class="logo">
-      <router-link to="/">
-        <img src="../../pages/img/logo-white.png" alt="">
+      <router-link v-if="showLogo" to="/">
+        <img class="logo-img"
+             v-if="user.logoUrl"
+             :src="user.logoUrl" alt="">
+        <img v-else-if="logoType === 'tfabric'" class="logo-img" src="../../pages/img/logo.png" alt="">
+        <img v-else-if="logoType === 'trc'" class="logo-img" src="../../pages/img/logo_trc.png" alt="">
+        <img v-else-if="logoType === 'lawcert'" class="logo-img" src="../../pages/img/logo_lawcert.png" alt="">
+        <img v-else class="logo-img" src="../../pages/img/logo.png" alt="">
       </router-link>
     </div>
     <div class="title" :class="end.length > 0 ? 'dropdown' : ''">
@@ -22,6 +28,11 @@
       </el-dropdown>
       <h2 v-else>{{ title }}</h2>
     </div>
+    <div class="manual">
+      <a v-if="businessType === $enum.BUSINESS_FUND" href="/static/doc/资金端操作说明书.docx"><el-button size="small">操作说明</el-button></a>
+      <a v-else-if="businessType === $enum.BUSINESS_ASSET" href="/static/doc/资产端操作说明书.docx"><el-button size="small">操作说明</el-button></a>
+      <a v-else-if="businessType === $enum.BUSINESS_CENTER" href="/static/doc/资产中心操作说明书.docx"><el-button size="small">操作说明</el-button></a>
+    </div>
     <div class="toolbar">
       <download></download>
       <el-dropdown class="user"
@@ -32,14 +43,14 @@
             <img :src="user.avatar" alt="">
           </div>
           <div class="info">
-            <p class="username">{{ user.realName }}<span class="phone">({{ user.phone }})</span></p>
-            <p class="company">{{ user.companyName }}</p>
+            <p class="username">{{ user.realName }}<span class="phone">({{ user.email }})</span></p>
+            <p class="company">{{ user.orgName }}</p>
           </div>
           <i class="dropdown-arrow el-icon el-icon-arrow-down"></i>
         </div>
         <el-dropdown-menu class="user-dropdown-list" slot="dropdown">
           <div @click="handleReset">
-            <el-dropdown-item><i class="fa fa-edit"></i> 重置密码</el-dropdown-item>
+            <el-dropdown-item><i class="fa fa-edit"></i> 修改密码</el-dropdown-item>
           </div>
           <div @click="handleExit">
             <el-dropdown-item><i class="fa fa-power-off"></i> 退出登录</el-dropdown-item>
@@ -48,7 +59,7 @@
       </el-dropdown>
     </div>
     <el-dialog :visible.sync="showResetDialog"
-               title="重置密码"
+               title="修改密码"
                width="480px"
                @close="handleResetDialogClose">
       <reset ref="reset"
@@ -62,6 +73,9 @@
   import Download from '../download/Download.vue';
   import Reset from '../../modules/user/Reset.vue';
   import {getLoginUser, logout} from '../../api/account';
+  import {getPicUrls} from '../../api/common';
+  import {mapState} from 'vuex';
+
   const BUSINESS_END_LIST = [
     {
       path: '/funds.html',
@@ -74,16 +88,24 @@
     {
       path: '/center.html',
       name: '资产中心'
-    },
-    {
-      path: '/chain-funds.html',
-      name: '链上资金端'
-    },
-    {
-      path: '/chain-assets.html',
-      name: '链上资产端'
     }
   ];
+
+  let logoType;
+  switch (location.hostname) {
+    case 'ats.tfabric.com':
+      logoType = 'tfabric';
+      break;
+    case 'ats.trc.com':
+      logoType = 'trc';
+      break;
+    case 'ats.lawcert.com':
+      logoType = 'lawcert';
+      break;
+    default:
+      logoType = 'tfabric';
+      break;
+  }
 
   export default {
     props: {
@@ -93,17 +115,24 @@
       return {
         user: {},
         endPaths: [],
-        showResetDialog: false
+        showResetDialog: false,
+        showLogo: false,
+        logoType
       }
     },
     computed: {
+      ...mapState([
+        'businessType'
+      ]),
       end() {
         return this.endPaths.filter(_ => _.name !== this.title)
       }
     },
+
     created() {
       this.getUserInfo();
     },
+
     methods: {
       handleExit() {
         this.$confirm('您确定要退出账号?', '退出提示', {
@@ -129,13 +158,20 @@
         this.$refs.reset.resetFields();
       },
       getUserInfo() {
-        getLoginUser().then(({data}) => {
+        getLoginUser().then(({ data }) => {
           if (data.code === 200) {
             const user = data.body;
             if (user) {
               this.user = user;
               this.$setLocalStorage('user', user);
-              this.endPaths = this.$binaryToArray(user.orgMgrPartyType || 0).map(_ => BUSINESS_END_LIST[_])
+              this.$store.commit('saveUserInfo', user);
+              this.endPaths = this.$binaryToArray(user.orgType || 0).map(_ => BUSINESS_END_LIST[_]);
+
+              if (user.logo) {
+                this.getLogoUrl(user.logo)
+              } else {
+                this.showLogo = true;
+              }
             }
           }
         }).catch((response) => {
@@ -145,6 +181,16 @@
             })
           }
         });
+      },
+      getLogoUrl(key) {
+        getPicUrls([key]).then(({ data }) => {
+          if (data.code === 200) {
+            this.$set(this.user, 'logoUrl', data.body && data.body[0]);
+          }
+          this.showLogo = true;
+        }).catch(() => {
+          this.showLogo = true;
+        })
       }
     },
     components: {
@@ -159,15 +205,16 @@
     width: 100%;
     height: 60px;
     color: #ffffff;
-    box-shadow: 0 2px 12px 0 rgba(0,0,0,.1);
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, .1);
     background: #ffffff;
 
     .logo {
-      display: inline-block;
+      float: left;
+      padding: 10px;
       width: 200px;
       height: 100%;
       text-align: center;
-      background: #0068ff;
+      background: #ffffff;
 
       a {
         vertical-align: middle;
@@ -178,20 +225,28 @@
           content: '';
           vertical-align: middle;
           display: inline;
-          line-height: 60px;
+          line-height: 40px;
         }
 
         img {
           vertical-align: middle;
         }
+
+        .logo-img {
+          max-width: 100%;
+          max-height: 100%;
+        }
       }
     }
 
     .title {
-      display: inline-block;
+      float: left;
       margin-left: 20px;
+      height: 100%;
 
       h2 {
+        vertical-align: middle;
+        display: inline-block;
         margin: 0;
         padding-left: 20px;
         width: 180px;
@@ -204,6 +259,14 @@
         color: #868d9a;
       }
 
+      &:after {
+        content: '';
+        vertical-align: middle;
+        display: inline-block;
+        width: 0;
+        height: 100%;
+      }
+
       &.dropdown {
         h2 {
           position: relative;
@@ -214,6 +277,20 @@
             right: 15px;
           }
         }
+      }
+    }
+
+    .manual {
+      float: left;
+      margin-left: 20px;
+      height: 100%;
+
+      &:after {
+        content: '';
+        vertical-align: middle;
+        display: inline-block;
+        width: 0;
+        height: 100%;
       }
     }
 

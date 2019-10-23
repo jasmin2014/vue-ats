@@ -45,8 +45,10 @@
         <el-row>
           <el-col :span="10">
             <el-form-item label="计费类型" prop="kind">
-              <ats-select v-model="newRow.kind" :kind="this.$enum.FEE_CHARGE_TYPE"
-                          :group="this.$enum.FEE_CHARGE_TYPE"></ats-select>
+              <ats-select v-model="newRow.kind"
+                          :kind="this.$enum.FEE_CHARGE_TYPE"
+                          :group="this.$enum.FEE_CHARGE_TYPE"
+                          :disabled="detailMode === 'EDIT'"></ats-select>
             </el-form-item>
           </el-col>
           <el-col :span="10">
@@ -93,7 +95,7 @@
         },
         // list: {},
         phaseList: [
-          this.$enum.FEE_PHASE_INITIAL,
+          // this.$enum.FEE_PHASE_INITIAL,
           this.$enum.FEE_PHASE_MIDTERM,
           this.$enum.FEE_PHASE_TERMINAL
         ],
@@ -210,15 +212,25 @@
       }
     },
     methods: {
-      save() {
-        this.$emit('save', this.$deepcopy(this.currentValue.allList))
+      save(callback) {
+        // this.$emit('save', this.$deepcopy(this.currentValue.allList))
+        if (typeof callback === 'function') {
+          callback(this.$deepcopy(this.currentValue.allList))
+        }
       },
       getSummaries({data}) {
         const sums = [];
-        sums[2] = '总计';
-        totalAmount = data.map(_ => _.kind === this.$enum.FEE_CHARGE_TYPE_AMOUNT ? _.amount : 0).reduce((prev, curr) => this.$floatPlus(prev, curr), 0);
-        totalRate = data.map(_ => _.kind === this.$enum.FEE_CHARGE_TYPE_PERCENT ? _.rate : 0).reduce((prev, curr) => this.$floatPlus(prev, curr), 0);
-        sums[3] = `${totalAmount}元 / ${this.$floatToPercentage(totalRate)}`;
+        if (this.mode === 'VIEW') {
+          sums[1] = '总计';
+          totalAmount = data.map(_ => _.kind === this.$enum.FEE_CHARGE_TYPE_AMOUNT ? _.amount : 0).reduce((prev, curr) => this.$floatPlus(prev, curr), 0);
+          totalRate = data.map(_ => _.kind === this.$enum.FEE_CHARGE_TYPE_PERCENT ? _.rate : 0).reduce((prev, curr) => this.$floatPlus(prev, curr), 0);
+          sums[2] = `${totalAmount}元 / ${this.$floatToPercentage(totalRate)}`;
+        } else {
+          sums[2] = '总计';
+          totalAmount = data.map(_ => _.kind === this.$enum.FEE_CHARGE_TYPE_AMOUNT ? _.amount : 0).reduce((prev, curr) => this.$floatPlus(prev, curr), 0);
+          totalRate = data.map(_ => _.kind === this.$enum.FEE_CHARGE_TYPE_PERCENT ? _.rate : 0).reduce((prev, curr) => this.$floatPlus(prev, curr), 0);
+          sums[3] = `${totalAmount}元 / ${this.$floatToPercentage(totalRate)}`;
+        }
         return sums;
       },
       // handlePhaseChange(phase) {
@@ -244,14 +256,11 @@
       },
       handleDelete(phase) {
         if (this.idList.length === 0) {
-          this.$message({
-            message: '没有可删除的收费项',
-            type: 'warning'
-          });
+          this.$message.warning('没有可删除的收费项');
           return;
         }
         if (this.isUpload) {
-          this.currentValue.allList = this.currentValue.allList.filter(_ => !this.idList.includes(_.id))
+          this.currentValue.allList = this.currentValue.allList.filter(_ => _.phase !== phase)
         } else {
           this.$emit('delete', this.$deepcopy(this.idList), phase)
         }

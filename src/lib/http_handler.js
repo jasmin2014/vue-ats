@@ -24,6 +24,15 @@ function responseSuccessHandler(response) {
   return response;
 }
 function responseErrorHandler(error) {
+  //  判断请求超时
+  if (error.message.indexOf('timeout') !== -1) {
+    Message({
+      message: '请求超时',
+      type: 'error'
+    });
+    return false;
+  }
+
   const response = error.response;
   if (response) {
     if (response.data instanceof Blob) {

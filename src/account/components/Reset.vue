@@ -1,57 +1,77 @@
 <!-- 重置密码 -->
 <template>
-  <div :class="this.$route.meta.type">
+  <div class="reset">
     <div class="wrapper">
-      <h2>{{ this.$route.meta.type === 'active' ? '账号激活' : '重置密码' }}</h2>
-      <section class="phone">
-        <el-input v-model.trim="reset.phone"
-                  ref="phone"
-                  placeholder="请输入手机号"
-                  autofocus
-                  @input="handlePhoneChange"
-                  @keyup.native.enter="handleConfirm"></el-input>
-      </section>
-      <section>
-        <el-input v-model.trim="reset.code"
-                  ref="code"
-                  placeholder="请输入验证码"
-                  @input="handleCodeChange"
-                  @keyup.native.enter="handleConfirm"></el-input>
-        <button class="btn-code"
-                :disabled="disabledCode"
-                tabindex="-1"
-                @click="handleCode">{{ btnCountDown || '获取验证码' }}
-        </button>
-      </section>
-      <section>
-        <el-input v-model="reset.password"
-                  ref="password"
-                  type="password"
-                  placeholder="请输入6-20位密码，包含数字、字母或符号"
-                  @input="handlePasswordChange"
-                  @keyup.native.enter="handleConfirm"></el-input>
-      </section>
-      <section>
-        <el-input v-model="repeatPassword"
-                  ref="repeatPassword"
-                  type="password"
-                  placeholder="再次输入密码"
-                  @input="handlePasswordChange"
-                  @keyup.native.enter="handleConfirm"></el-input>
-      </section>
-      <section class="action">
-        <el-button type="primary"
-                   :loading="loading"
-                   @click="handleConfirm">确定
-        </el-button>
-      </section>
+      <h2 v-if="emailType === 'ACTIVE_USER'">账号激活</h2>
+      <h2 v-else-if="emailType === 'RESET_PASSWORD'">重置密码</h2>
+      <el-form v-if="!checking && codeValid"
+               ref="form"
+               :model="reset"
+               :rules="rules">
+        <section class="hint">
+          <p v-if="emailType === 'ACTIVE_USER'">您正在激活 {{ reset.email }} 的账号，请按照提示完成操作。</p>
+          <p v-else-if="emailType === 'RESET_PASSWORD'">您正在重置 {{ reset.email }} 的密码，请按照提示完成操作。</p>
+        </section>
+        <section>
+          <el-form-item prop="password" :error="passwordError">
+            <el-input v-model="reset.password"
+                      ref="password"
+                      type="password"
+                      placeholder="请输入6-20位密码，包含数字、字母或符号"
+                      @input="handlePasswordChange"
+                      @keyup.native.enter="handleConfirm"></el-input>
+          </el-form-item>
+        </section>
+        <section>
+          <el-form-item prop="repeatPassword">
+            <el-input v-model="reset.repeatPassword"
+                      ref="repeatPassword"
+                      type="password"
+                      placeholder="再次输入密码"
+                      @input="handlePasswordChange"
+                      @keyup.native.enter="handleConfirm"></el-input>
+          </el-form-item>
+        </section>
+        <section class="action">
+          <el-button type="primary"
+                     :loading="loading"
+                     @click="handleConfirm">确定
+          </el-button>
+        </section>
+      </el-form>
+      <div v-else>
+        <section class="hint">
+          <p v-if="checking">正在检验...</p>
+          <p v-else>{{ errorMsg }}</p>
+        </section>
+        <section class="action">
+          <el-button v-if="serverError"
+                     type="primary"
+                     :loading="checking"
+                     @click="checkCode(code)">重试
+          </el-button>
+          <el-button v-else
+                     type="primary"
+                     :loading="checking"
+                     @click="handleLogin">去登录
+          </el-button>
+        </section>
+      </div>
     </div>
   </div>
 </template>
 <script>
-  import {checkPhone, sendCode, doActivate, doResetPassword} from '../api'
+  import {JSEncrypt} from 'js-encrypt';
+  import {
+    checkCode,
+    doActivate,
+    doResetPassword,
+    getPublicKey
+  } from '../api'
+  import Valid from '../../lib/validation'
 
   const ILLEGAL_PHONE = 'ILLEGAL_PHONE';
+  const ILLEGAL_EMAIL = 'ILLEGAL_EMAIL';
   const ILLEGAL_PASSWORD = 'ILLEGAL_PASSWORD';
   const ILLEGAL_PASSWORD_NO_SPACE = 'ILLEGAL_PASSWORD_NO_SPACE';
   const NULL_CODE = 'NULL_CODE';
@@ -61,117 +81,111 @@
   const NETWORK_ERROR = 'NETWORK_ERROR';
   const SEND_CODE_SUCCESS = 'SEND_CODE_SUCCESS';
   const SEND_CODE_FAILED = 'SEND_CODE_FAILED';
-  const USAGE_ACTIVATE = 'REGISTER';
+  const USAGE_ACTIVATE = 'ACTIVE_USER';
   const USAGE_RESET = 'RESET_PASSWORD';
-  const phoneRegexp = /^1[34578]\d{9}$/;
+  const emailRegexp = Valid.email;
+
+  const CODE_CHECK_CODE_EXPIRED = '204c8473d1c477f215b';
+  const CODE_CHECK_CODE_NULL = '2060125bac776a31f7e';
+  const CODE_ILLEGA_PASSWORD_NO_SPACE = '202f2a8bf47d8e7668c';
+  const CODE_PASSWORD_WRONG = '20289dcf71090e7c8ef';
+  const CODE_ILLEGAL_PASSWORD = '20289dcf71090e7c8ef';
+
+  const encrypt = new JSEncrypt();
 
   export default {
     data() {
       return {
         reset: {
-          phone: this.$route.params.phone,
-          password: ''
+          email: '',
+          password: '',
+          repeatPassword: '',
+          code: ''
         },
-        repeatPassword: '',
+        passwordError: '',
+        emailType: this.$route.meta.type,
         loading: false,
-        disabledCode: true,
-        btnCountDown: ''
+        checking: false,
+        serverError: false,
+        errorMsg: '',
+        code: this.$route.query.code,
+        codeValid: false,
+        hasPubKey: false,
+        rules: {
+          password: [
+            { required: true, message: '请输入密码', trigger: 'blur' },
+            {
+              trigger: 'blur',
+              validator: (rule, value, callback) => {
+                if (value.indexOf(' ') > -1) {
+                  callback(this.getMessageByIllegalType(ILLEGAL_PASSWORD_NO_SPACE))
+                } else if (!value.match(new RegExp('(?!^[0-9]+$)(?!^[a-zA-Z]+$)(?!^[^a-zA-Z0-9]+$)^.{6,20}$'))) {
+                  callback(this.getMessageByIllegalType(ILLEGAL_PASSWORD))
+                } else {
+                  callback();
+                }
+              }
+            }
+          ],
+          repeatPassword: [
+            {
+              trigger: 'blur',
+              validator: (rule, value, callback) => {
+                if (value !== this.reset.password) {
+                  callback(this.getMessageByIllegalType(INCONSISTENT_PASSWORD));
+                } else {
+                  callback();
+                }
+              }
+            }
+          ]
+        }
       }
     },
-    mounted() {
-      this.$refs.phone.$emit('input', this.reset.phone);
-      this.$refs.phone.$refs.input.focus();
+
+    destroyed() {
+      this.$off('load-pub-key');
     },
+    created() {
+      this.checkCode(this.code);
+      this.getPublicKey().then(() => {
+        this.hasPubKey = true;
+        this.$emit('load-pub-key');
+      }).catch(() => {
+        this.hasPubKey = false;
+      })
+    },
+    mounted() {
+      if (this.$refs.password) {
+        this.$refs.password.$refs.input.focus();
+      }
+    },
+
     methods: {
-      handlePhoneChange(phone) {
-        this.disabledCode = !phoneRegexp.test(phone);
-        this.$refs.phone.$refs.input.classList.remove('error');
-      },
-      handleCode() {
-        const phone = this.reset.phone;
-        this.checkPhone(phone).then((res) => {
-          const { usage, user } = res;
-          this.sendCode(usage, phone, user.partyId)
-        }, (type) => {
-          this.$message({
-            message: this.getMessageByIllegalType(type),
-            type: 'error'
-          })
+      handleLogin() {
+        this.$router.replace({
+          name: 'Login'
         })
       },
-      handleCodeChange(code) {
-        if (code) {
-          this.$refs.code.$refs.input.classList.remove('error');
-        }
-      },
       handlePasswordChange(password) {
-        if (password) {
-          this.$refs.password.$refs.input.classList.remove('error');
-          this.$refs.repeatPassword.$refs.input.classList.remove('error');
-        }
+        this.passwordError = '';
       },
       handleConfirm() {
-        const phone = this.reset.phone;
+        const email = this.reset.email;
         const code = this.reset.code;
         const password = this.reset.password;
-        const repeatPassword = this.repeatPassword;
 
-        if (!phoneRegexp.test(phone)) { // 非法手机号
-          this.$refs.phone.$refs.input.focus();
-          this.$refs.phone.$refs.input.classList.add('error');
-          this.$message({
-            message: this.getMessageByIllegalType(ILLEGAL_PHONE),
-            type: 'error'
-          });
-        } else if (!code) { // 空验证码
-          this.$refs.code.$refs.input.focus();
-          this.$refs.code.$refs.input.classList.add('error');
-          this.$message({
-            message: this.getMessageByIllegalType(NULL_CODE),
-            type: 'error'
-          });
-        } else if (!password) { // 空密码
-          this.$refs.password.$refs.input.focus();
-          this.$refs.password.$refs.input.classList.add('error');
-          this.$message({
-            message: this.getMessageByIllegalType(NULL_PASSWORD),
-            type: 'error'
-          });
-        } else if (repeatPassword !== password) { // 密码不一致
-          this.$refs.password.$refs.input.focus();
-          this.$refs.password.$refs.input.classList.add('error');
-          this.$refs.repeatPassword.$refs.input.classList.add('error');
-          this.$message({
-            message: this.getMessageByIllegalType(INCONSISTENT_PASSWORD),
-            type: 'error'
-          });
-        } else if (!password.match(new RegExp('(?!^[0-9]+$)(?!^[a-zA-Z]+$)(?!^[^a-zA-Z0-9]+$)^.{6,20}$')) ||
-          password.indexOf(' ') > -1) { // 密码不合规
-          this.$refs.password.$refs.input.focus();
-          this.$refs.password.$refs.input.classList.add('error');
-          this.$refs.repeatPassword.$refs.input.classList.add('error');
-          if (password.indexOf(' ') > -1) {
-            this.$message({
-              message: this.getMessageByIllegalType(ILLEGAL_PASSWORD_NO_SPACE),
-              type: 'error'
-            });
-          } else {
-            this.$message({
-              message: this.getMessageByIllegalType(ILLEGAL_PASSWORD),
-              type: 'error'
-            });
-          }
-        } else {
-          this.loading = true;
-          this.checkPhone(phone).then((res) => {
-            const { usage, user } = res;
-            this.doConfirm(usage, phone, code, password, user).then((msg) => {
+        this.$refs.form.validate(valid => {
+          console.log(valid);
+          if (valid) {
+            this.loading = true;
+            this.doConfirm(this.emailType, email, code, password).then((msg) => {
               this.loading = false;
               this.$alert(msg, '提示', {
                 confirmButtonText: '去登录',
                 type: 'success',
                 callback: () => {
-                  this.$router.push({ name: 'Login', params: { phone } })
+                  this.$router.push({ name: 'Login', params: { email } })
                 }
               });
             }, (type) => {
@@ -181,140 +195,106 @@
                 type: 'error'
               })
             });
-          }, (type) => {
-            this.loading = false;
-            this.$message({
-              message: this.getMessageByIllegalType(type),
-              type: 'error'
-            });
-          })
-        }
-      },
-      checkPhone(phone) {
-        return new Promise((resolve, reject) => {
-          checkPhone(phone).then(response => {
-            const res = response.data;
-            if (res.code === 200) {
-              if (res.body.isActivate) {
-                resolve({ usage: USAGE_RESET, user: res.body })
-              } else {
-                resolve({ usage: USAGE_ACTIVATE, user: res.body })
-              }
-            } else if (res.code === 40004) {
-              reject(NO_AUTHORITY)
-            } else {
-              reject(res.message)
-            }
-          }, (error) => {
-            const response = error.response;
-            if (response && response.status === 400) {
-              reject(response.data && response.data.message ? response.data.message : NETWORK_ERROR)
-            } else {
-              reject(NETWORK_ERROR)
-            }
-          })
+          }
         })
       },
-      sendCode(usage, phone, partyId) {
-        sendCode(usage, phone, partyId).then((response) => {
-          const res = response.data;
-          if (res.code == 200) {
-            this.countDown(60);
-            this.$message({
-              message: this.getMessageByIllegalType(SEND_CODE_SUCCESS),
-              type: 'success'
-            })
+      checkCode(code) {
+        this.checking = true;
+        this.serverError = false;
+        this.errorMsg = '';
+        checkCode(code).then(({ data }) => {
+          this.checking = false;
+          if (data.code == 200) {
+            this.codeValid = true;
+            this.reset.email = data.body.email;
+            this.reset.code = data.body.code;
+            this.emailType = data.body.emailType;
           } else {
-            this.$message({
-              message: res.message,
-              type: 'error'
-            })
+            this.codeValid = false;
+            this.errorMsg = data.message;
           }
-        }).catch(() => {
-          this.$message({
-            message: this.getMessageByIllegalType(NETWORK_ERROR),
-            type: 'error'
+        }).catch((error) => {
+          this.checking = false;
+          this.serverError = true;
+          if (error) {
+            const { response } = error;
+            if (error.message && error.message.indexOf('timeout') !== -1) {
+              this.errorMsg = '请求超时';
+            } else {
+              this.errorMsg = response && response.data && response.data.message ? response.data.message : '服务器错误';
+            }
+          } else {
+            this.errorMsg = '服务器错误';
+          }
+        })
+      },
+      doConfirm(emailType, email, code, password) {
+        return new Promise((resolve, reject) => {
+          this.guaranteePubKey(() => {
+            let promise;
+            const encrypted = encrypt.encrypt(password);
+
+            if (emailType === USAGE_ACTIVATE) {
+              promise = doActivate(email, code, encrypted, true)
+            } else if (emailType === USAGE_RESET) {
+              promise = doResetPassword(email, code, encrypted, true)
+            }
+
+            promise.then(({ data }) => {
+              if (data.code == 200) {
+                resolve('操作成功');
+              } else if (data.code === CODE_CHECK_CODE_EXPIRED) { // 邮件已失效
+                this.codeValid = false;
+                reject(data.message)
+              } else {
+                switch (data.code) {
+                  case CODE_ILLEGA_PASSWORD_NO_SPACE:
+                  case CODE_ILLEGAL_PASSWORD:
+                  case CODE_PASSWORD_WRONG:
+                    this.passwordError = data.message;
+                    break;
+                  default:
+                    reject(data.message);
+                    break;
+                }
+              }
+            }, () => {
+              reject(NETWORK_ERROR)
+            })
           })
         })
       },
-      doConfirm(usage, phone, code, password, user) {
-        return new Promise((resolve, reject) => {
-          if (usage === USAGE_ACTIVATE) {
-            doActivate(phone, code, password, user.realName).then(response => {
-              const res = response.data;
-              if (res.code == 200) {
-                resolve('激活成功')
-              } else if (res.code == '201002') {
-                if (res.message.indexOf('手机') > -1) {
-                  this.$refs.phone.$refs.input.focus();
-                  this.$refs.phone.$refs.input.classList.add('error');
-                } else if (res.message.indexOf('验证码') > -1) {
-                  this.$refs.code.$refs.input.focus();
-                  this.$refs.code.$refs.input.classList.add('error');
-                } else if (res.message.indexOf('密码') > -1) {
-                  this.$refs.password.$refs.input.focus();
-                  this.$refs.password.$refs.input.classList.add('error');
-                  this.$refs.repeatPassword.$refs.input.classList.add('error');
-                }
-                reject(res.message)
-              } else if (res.code == '202002') {
-                this.$refs.code.$refs.input.focus();
-                this.$refs.code.$refs.input.classList.add('error');
-                reject(res.message)
-              } else {
-                reject(res.message)
-              }
-            }, () => {
-              reject(NETWORK_ERROR)
-            })
-          } else if (usage === USAGE_RESET) {
-            doResetPassword(phone, code, password).then(response => {
-              const res = response.data;
-              if (res.code == 200) {
-                resolve('重置成功')
-              } else if (res.code == '201002') {
-                if (res.message.indexOf('手机') > -1) {
-                  this.$refs.phone.$refs.input.focus();
-                  this.$refs.phone.$refs.input.classList.add('error');
-                } else if (res.message.indexOf('验证码') > -1) {
-                  this.$refs.code.$refs.input.focus();
-                  this.$refs.code.$refs.input.classList.add('error');
-                } else if (res.message.indexOf('密码') > -1) {
-                  this.$refs.password.$refs.input.focus();
-                  this.$refs.password.$refs.input.classList.add('error');
-                  this.$refs.repeatPassword.$refs.input.classList.add('error');
-                }
-                reject(res.message)
-              } else if (res.code == '202002') {
-                this.$refs.code.$refs.input.focus();
-                this.$refs.code.$refs.input.classList.add('error');
-                reject(res.message)
-              } else {
-                reject(res.message)
-              }
-            }, () => {
-              reject(NETWORK_ERROR)
-            })
-          }
-        })
-      },
-      countDown(sec) {
-        if (sec >= 0) {
-          this.disabledCode = true;
-          this.btnCountDown = `剩余${sec}s`;
-          setTimeout(() => {
-            this.countDown(--sec);
-          }, 1000)
+      guaranteePubKey(done) {
+        if (this.hasPubKey) {
+          done();
         } else {
-          this.disabledCode = false;
-          this.btnCountDown = '';
+          this.$once('load-pub-key', () => {
+            done();
+          })
         }
+      },
+      getPublicKey() {
+        return new Promise((resolve, reject) => {
+          getPublicKey().then(({ data }) => {
+            if (data.code == 200) {
+              encrypt.setPublicKey(`-----BEGIN PUBLIC KEY-----\n${data.body.publicKey}\n-----END PUBLIC KEY-----`);
+              resolve(data.body.publicKey);
+            } else {
+              reject();
+            }
+          }).catch((e) => {
+            reject();
+          })
+        })
       },
       getMessageByIllegalType(type) {
         let msg = '';
         switch (type) {
           case ILLEGAL_PHONE:
             msg = '请输入正确的手机号';
+            break;
+          case ILLEGAL_EMAIL:
+            msg = '请输入正确的邮箱地址';
             break;
           case ILLEGAL_PASSWORD:
             msg = '密码为6-20位数字、字母或符号';
@@ -326,7 +306,7 @@
             msg = '请输入密码';
             break;
           case NULL_CODE:
-            msg = '请输入验证码';
+            msg = '重置链接有误';
             break;
           case INCONSISTENT_PASSWORD:
             msg = '两次密码不一致';
@@ -352,35 +332,19 @@
     }
   }
 </script>
-<style lang="scss">
-  .reset, .active {
-    .btn-code {
-      position: absolute;
-      right: 18px;
-      top: 8px;
-      width: 90px;
-      height: 28px;
-      font-size: 12px;
-      border: none;
-      outline: none;
-      background: #fbf2f2;
-      color: #ff5555;
-      cursor: pointer;
-      border-radius: 14px;
-      &:disabled {
-        background: none;
-        color: #cccccc;
-        border: 1px solid #e5e5e5;
-        cursor: not-allowed;
-      }
-    }
+<style lang="scss" scoped>
+  .reset {
+    section {
+      &.hint {
+        height: 22px !important;
 
-    .remember-password {
-      overflow: hidden;
-      min-height: 40px !important;
-
-      a {
-        float: right;
+        p {
+          padding-left: 23px;
+          font-size: 14px;
+          line-height: 1.5;
+          background: url("../../pages/img/icon-warning.png") left 3px no-repeat;
+          color: #ff5555;
+        }
       }
     }
 

@@ -1,5 +1,10 @@
+import application from './application'
+import material from './materials'
+
 export default {
   state: {
+    businessType: '',
+    user: {},
     routes: {},
     buttons: {},
     qiniu: '',
@@ -21,6 +26,12 @@ export default {
     }
   },
   mutations: {
+    saveBusinessType(state, type) {
+      state.businessType = type;
+    },
+    saveUserInfo(state, user) {
+      state.user = user;
+    },
     saveRoute(state, {routes, buttons}) {
       state.routes = routes.filter(_ => _.meta.show);
       window.__buttons = state.buttons = buttons;
@@ -54,5 +65,9 @@ export default {
     deleteDownloadFile(state, id) {
       state.download.list = state.download.list.filter(_ => _.id !== id);
     }
+  },
+  modules: {
+    application,
+    material
   }
 }

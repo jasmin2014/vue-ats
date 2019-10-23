@@ -16,7 +16,7 @@ export const getRepayList = (params) => {
 
 // 还款计划表详情接口
 export const getRepayDetail = (loanApplication) => {
-  return http.funds.get('/v1/ppvt/repay/_find-repay-plan', {
+  return http.funds.get('/v2/finance/ppvt/repay', {
     params: {
       loanApplication
     }
@@ -98,4 +98,8 @@ export const downloadRepayPlanList = (params) => {
       'X-Action-Code': window.__buttons['OperationPlanDownload']
     }
   })
+};
+/** ========== 资产数据统计 =============== **/
+export const getAssetStat = (params) => {
+  return http.funds.post('/v2/loan-count/share', params)
 };

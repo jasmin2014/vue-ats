@@ -4,169 +4,206 @@
       <el-row>
         <el-col :span="6">
           <el-form-item label="客户编号">
-            <ats-input v-if="currentType === this.$enum.SUBJECT_PROP_PERSON"
-                       v-model="value.personNo"
-                       disabled></ats-input>
-            <ats-input v-if="currentType === this.$enum.SUBJECT_PROP_ORGANIZE"
-                       v-model="value.partyNo"
+            <ats-input v-model="value.id"
                        disabled></ats-input>
           </el-form-item>
         </el-col>
         <el-col :span="6" :offset="1">
           <el-form-item label="主体性质">
-            <ats-select v-model="currentType"
+            <ats-select v-model="type"
                         :mode="mode === 'CREATE' ? mode : 'VIEW'"
                         :kind="this.$enum.SUBJECT_PROP"
                         :group="this.$enum.SUBJECT_PROP"></ats-select>
           </el-form-item>
         </el-col>
-        <!--<el-col :span="4" :offset="7" v-if="mode !== 'VIEW'">-->
-          <!--<el-button type="primary" @click="handleSave">保存</el-button>-->
-          <!--<el-button @click="handleCancel">取消</el-button>-->
-        <!--</el-col>-->
+        <el-col v-if="dialog"
+                :span="3" :offset="1">
+          <el-button type="primary" @click="handleLoanStat">借款统计</el-button>
+        </el-col>
+      </el-row>
+      <el-row v-if="type === this.$enum.SUBJECT_PROP_PERSON">
+        <el-col :span="6">
+          <el-form-item label="客户姓名">
+            <ats-input v-model="personName"
+                       :mode="mode"></ats-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="6" :offset="1">
+          <el-form-item label="证件号码">
+            <ats-input v-model="ident"
+                       :mode="mode"></ats-input>
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-row v-else-if="type === this.$enum.SUBJECT_PROP_ORGANIZE">
+        <el-col :span="6">
+          <el-form-item label="企业名称">
+            <ats-input v-model="companyName"
+                       :mode="mode"></ats-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="10" :offset="1">
+          <el-form-item label="统一社会信用代码">
+            <ats-input v-model="ident"
+                       :mode="mode"></ats-input>
+          </el-form-item>
+        </el-col>
       </el-row>
     </el-form>
-    <individual v-if="currentType === this.$enum.SUBJECT_PROP_PERSON"
-                ref="individual"
-                v-model="value"
-                :mode="from === 'create' ? 'CREATE' : mode"
-                :end="end"
-                :error="error"
-                :show-card="showCard"
-                @save-base="handleSaveBase"
-                @save-contact="handleSaveContact"
-                @save-prop="handleSaveProp"
-                @bind-card="handleBindCard"
-                @delete-prop="handleDeleteProp"
-                @save-proof="handleSaveProof"
-                @delete-proof="handleDeleteProof"></individual>
-    <enterprise v-else-if="currentType === this.$enum.SUBJECT_PROP_ORGANIZE"
-                ref="enterprise"
-                v-model="value"
-                :mode="from === 'create' ? 'CREATE' : mode"
-                :end="end"
-                :error="error"
-                :show-card="showCard"
-                @org-name-blur="handleOrgNameBlur"
-                @save-base="handleSaveBase"
-                @save-business="handleSaveBusiness"
-                @save-legal="handleSaveLegal"
-                @save-prop="handleSaveProp"
-                @delete-prop="handleDeleteProp"
-                @save-proof="handleSaveProof"
-                @delete-proof="handleDeleteProof"></enterprise>
-    <!--<el-card :class="end !== this.$enum.BUSINESS_ASSET ? 'no-card' : ''">-->
-    <!--</el-card>-->
+    <el-collapse v-model="currentLoanId"
+                 accordion
+                 @change="handleLoanIdChange">
+      <el-collapse-item v-for="loan in value.loanList" :key="loan.id"
+                        :name="loan.id">
+        <template slot="title">
+          <span>合同号：{{ loan.contract }}</span>
+          <span style="float: right; margin-right: 20px;">申请日期： {{ loan.appliedTime }}</span>
+        </template>
+        <div v-if="currentLoanId === loan.id">
+          <person v-if="type === $enum.SUBJECT_PROP_PERSON"
+                  v-model="customer"
+                  :mode="mode"
+                  :encode="encode"></person>
+          <org v-else-if="type === $enum.SUBJECT_PROP_ORGANIZE"
+               v-model="customer"
+               :mode="mode"
+               :encode="encode"></org>
+          <card v-model="card"
+                :type="type"
+                :mode="mode"
+                :encode="encode"></card>
+          <props v-model="props"
+                 :prop-list="propList"
+                 :mode="mode"></props>
+        </div>
+      </el-collapse-item>
+    </el-collapse>
+
+    <el-row type="flex" justify="center" class="mgt20">
+      <el-pagination :total="totalRecord" :page-size="pageSize"
+                     layout="total, prev, pager, next, jumper, sizes" :page-sizes="[20, 50, 100]"
+                     @current-change="handleCurrentChange" @size-change="handlePageSizeChange"></el-pagination>
+    </el-row>
+
+    <el-dialog v-if="dialog"
+               :visible.sync="dialog.visible"
+               title="借款统计"
+               width="700px"
+               @close="handleDialogClose">
+      <loan-stat v-model="dialog.list" style="width: 90%;"></loan-stat>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-  import Individual from './Individual.vue'
-  import Enterprise from './Enterprise.vue'
+  import Person from './PersonBase'
+  import Org from './OrgBase'
+  import Props from '../prop/Props'
+  import Card from '../prop/Card'
+  import LoanStat from './LoanStat'
+  const PROP_LIST = [
+    'propCarDTO',
+    'propHouseDTO',
+    'propDeviceDTO',
+    'propShopDTO',
+    'propElectronicCommerceDTO',
+    'propPublicReserveFunds'
+  ];
 
   export default {
     props: {
       value: Object,
+      customer: Object,
+      props: Object,
+      mode: {
+        type: String,
+        default: 'VIEW'
+      },
       type: String,
-      end: String,
-      mode: String,
-      from: String,
-      error: {
-        type: Object,
-        default: function () {
-          return {}
-        }
-      }
+      dialog: Object,
+      pageNumber: Number,
+      pageSize: Number,
+      totalRecord: Number,
+      encode: Boolean
     },
     data() {
       return {
-        currentType: this.type,
-        showCard: this.end === this.$enum.BUSINESS_ASSET
+        currentLoanId: ''
       }
     },
-    watch: {
-      currentType(val, oldVal) {
-        if (val !== oldVal) {
-          this.$emit('update:type', val);
+    computed: {
+      propList() {
+        const list = [];
+        PROP_LIST.forEach(prop => {
+          if (this.customer && this.customer.hasOwnProperty(prop) && this.customer[prop]) {
+            list.push(prop)
+          }
+        });
+        return list;
+      },
+      card() {
+        const value = this.value;
+        return {
+          loanCard: this.encode ? this.$encoder.card(value.bankCard) : value.bankCard,
+          cardBank: value.cardBank,
+          loanMobile: this.encode ? this.$encoder.mobile(value.bankMobile) : value.bankMobile,
+          openBank: value.openBank,
+          bankProvince: value.bankProvince,
+          bankCity: value.bankCity
+        }
+      },
+      personName: {
+        get() {
+          return this.encode ? this.$encoder.personName(this.value.name) : this.value.name;
+        },
+        set(val) {
+          this.value.name = val;
+        }
+      },
+      companyName: {
+        get() {
+          return this.encode ? this.$encoder.companyName(this.value.name) : this.value.name;
+        },
+        set(val) {
+          this.value.name = val;
+        }
+      },
+      ident: {
+        get() {
+          return this.encode ? this.$encoder.ident(this.value.ident) : this.value.ident;
+        },
+        set(val) {
+          this.value.ident = val;
         }
       }
     },
     methods: {
-      setUscCode(uscCode) {
-        this.$refs['enterprise'].setUscCode(uscCode);
+      handleLoanIdChange(loanId) {
+        this.$emit('loan-change', loanId)
       },
-      handleOrgNameBlur(orgName) {
-        this.$emit('org-name-blur', orgName)
+      handleLoanStat() {
+        this.$emit('stat', {
+          assetOrgId: this.value.partyOrgId,
+          partyId: this.value.loanPartyId
+        });
       },
-      handleSaveBase(data) {
-        this.$emit('save-base', {
-          type: this.currentType,
-          data
-        })
+      handleDialogClose() {
+        this.$emit('stat-close');
       },
-      handleSaveContact(data) {
-        this.$emit('save-contact', {
-          type: this.currentType,
-          data
-        })
+      handleCurrentChange(index) {
+        this.$emit('current-change', index);
       },
-      handleSaveBusiness(data) {
-        this.$emit('save-business', {
-          type: this.currentType,
-          data
-        })
-      },
-      handleSaveLegal(data) {
-        this.$emit('save-legal', {
-          type: this.currentType,
-          data
-        })
-      },
-      handleSaveProp({type, data}) {
-        this.$emit('save-prop', {
-          type, // 资产信息类型
-          data
-        })
-      },
-      handleBindCard(propId) {
-        this.$emit('bind-card', propId)
-      },
-      handleDeleteProp({type, id}) {
-        this.$emit('delete-prop', {
-          type,
-          itemId: id
-        })
-      },
-      handleSaveProof(file) {
-        this.$emit('save-proof', {
-          type: this.currentType,
-          file
-        })
-      },
-      handleDeleteProof(proofId) {
-        this.$emit('delete-proof', {
-          type: this.currentType,
-          proofId
-        })
+      handlePageSizeChange(pageSize) {
+        this.$emit('size-change', pageSize)
       }
     },
     components: {
-      Enterprise,
-      Individual
+      Person,
+      Org,
+      Props,
+      Card,
+      LoanStat
     }
   }
-</script>
 
-<style lang="scss">
-  .customer {
-    .no-card {
-      border: none;
-      box-shadow: none;
-      background: initial;
-      color: inherit;
-      .el-card__body {
-        padding: 0;
-      }
-    }
-  }
-</style>
+</script>

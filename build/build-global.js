@@ -3,3 +3,5 @@ NODE_ENV = '';
 APP_ID = '';
 APP_SECRET = '';
 U_CENTER_BASE_URL = '';
+U_CENTER_TENANT_URL = '';
+QINIU_UPLOAD_URL = '';

@@ -1,96 +1,111 @@
 <template>
   <div class="create">
-    <asset :info="detail"
-           :material="material"
-           :fee="fee"
+    <asset :loan-customer="loanCustomer"
+           :loan-application="loanApplication"
+           :proof-materials="proofMaterials"
            :mode="mode"
            :error="error"
-           :type="this.$enum.BUSINESS_ASSET"
-           @save="handleSave"
-           @select-customer="handleSelectCustomer"
-           @customer-type-change="handleCustomerTypeChange"></asset>
-    <!-- 选择客户弹出框 -->
-    <el-dialog title="选择客户" width="1000px"
-               :visible.sync="showDialog"
-               @open="handleDialogOpen"
-               @close="handleDialogClose">
-      <customer-choose ref="choose"
-                       :list="customerList"
-                       :table="customerTable"
-                       :total="customerPageTotal"
-                       :type="customerType"
-                       @search="handleSearchCustomer"
-                       @confirm="handleConfirmCustomer"
-                       @cancel="showDialog = false"></customer-choose>
-    </el-dialog>
+           @save="handleSave"></asset>
   </div>
 </template>
 
 <script>
   import Asset from '../../../modules/assets/Asset.vue'
-  import CustomerChoose from '../../../modules/assets/Choose.vue'
+  import {mapState} from 'vuex'
   import {
-    getIndividualCustomerList,
-    getEnterpriseCustomerList,
-    getIndividualDetail,
-    getEnterpriseDetail,
-    getCustomerBindCardList} from '../../api/customer'
-  import {createLoan} from '../../api/asset'
+    createPersonLoan,
+    createOrgLoan,
+    getProjectNameOptions,
+    getServiceFeeRateByIntentionFund,
+    getProtectionPlanListByModel
+  } from '../../api/asset'
+  import { getCollectionCardList } from '../../api/finance';
+  import {getPicUrls} from '../../../api/common';
 
   export default {
     data() {
       return {
         mode: 'CREATE',
         showDialog: false,
-        detail: {
-          loanPartyKind: this.$enum.SUBJECT_PROP_PERSON
+        loanCustomer: {
+          name: '',
+          ident: '',
+          identType: this.$enum.IDENT_TYPE_IDENTITY,
+          applicantPerson: {},
+          propCarDTO: {},
+          propHouseDTO: {},
+          propDeviceDTO: {},
+          propShopDTO: {},
+          propElectronicCommerceDTO: {},
+          propPublicReserveFunds: [],
+          relationships: [],
+          friendships: [],
+          materials: [],
+          legal: {
+            identKind: this.$enum.IDENT_TYPE_IDENTITY
+          },
+          stocks: []
         },
-        material: null,
-        fee: null,
-        error: {},
-        customerType: '',
-        customerPageTotal: 0,
-        customerList: [],
-        customerTable: [],
-        selectedCustomer: {},
-        individualTable: [
-          {
-            label: '客户编号',
-            prop: 'personNo'
-          }, {
-            label: '客户姓名',
-            prop: 'customerName'
-          }, {
-            label: '证件号码',
-            prop: 'customerIdent'
-          }, {
-            label: '手机号码',
-            prop: 'mobile'
-          }
-        ],
-        enterpriseTable: [
-          {
-            label: '客户编号',
-            prop: 'partyNo'
-          }, {
-            label: '企业名称',
-            prop: 'enterpriseName'
-          }, {
-            label: '统一社会信用代码',
-            prop: 'uscCode'
-          }, {
-            label: '企业法人代表姓名',
-            prop: 'realName'
-          }
-        ]
+        loanApplication: {
+          loanPartyKind: this.$enum.SUBJECT_PROP_PERSON,
+          assetKind: '',
+          projectName: '',
+          repayWay: '',
+          loanModel: '',
+          repayModel: ''
+        },
+        proofMaterials: {
+          originals: [],
+          pdfs: []
+        },
+        error: {}
       }
     },
-    mounted() {
-      this.$set(this.detail, 'kind', this.$enum.LOAN_PROP_NEW)
+    computed: {
+      ...mapState({
+        intentionFund: state => state.application.intentionFund,
+        projectType: state => state.application.projectType,
+        protectionModel: state => state.application.protectionModel,
+        assetOrg: state => state.user.orgId
+      })
     },
+    watch: {
+      intentionFund(val, oldVal) {
+        if (val !== oldVal) {
+          this.getCollectionCardList(val);
+          this.getServiceFeeRate(this.projectType, val);
+          this.getProtectionPlanList(this.protectionModel, val);
+        }
+      },
+      projectType(val, oldVal) {
+        if (val !== oldVal) {
+          this.getServiceFeeRate(val, this.intentionFund);
+        }
+      },
+      protectionModel(val, oldVal) {
+        if (val !== oldVal) {
+          this.getProtectionPlanList(val, this.intentionFund);
+        }
+      }
+    },
+
+    created() {
+      this.getProjectNameOptions();
+    },
+    mounted() {
+      this.$set(this.loanApplication, 'kind', this.$enum.LOAN_PROP_NEW);
+      this.$set(this.loanApplication, 'newLoanKind', this.$enum.LOAN_PROP_SUB_NEW);
+    },
+
     methods: {
       handleSave(val) {
-        createLoan(val).then(({ data }) => {
+        let promise = {};
+        if (val.loanApplication && val.loanApplication.loanPartyKind === this.$enum.SUBJECT_PROP_PERSON) {
+          promise = createPersonLoan(val);
+        } else if (val.loanApplication && val.loanApplication.loanPartyKind === this.$enum.SUBJECT_PROP_ORGANIZE) {
+          promise = createOrgLoan(val);
+        }
+        promise.then(({ data }) => {
           if (data.code === 201) {
             const id = data.message;
             this.$router.replace({
@@ -106,77 +121,92 @@
           }
         })
       },
-      handleCustomerTypeChange(type) {
-        this.$set(this.detail, 'cardList', []);
-        this.$set(this.detail, 'loanParty', '');
-        this.$set(this.detail, 'loanPartyName', '');
-        this.$set(this.detail, 'loanIdent', '');
-      },
-      handleSelectCustomer(type) {
-        if (!type) {
-          this.$alert('请先选择主体性质', '提示消息', {
-            confirmButtonText: '确定',
-            type: 'warning'
-          });
-          return;
-        }
-        this.customerType = type;
-        this.customerTable = type === this.$enum.SUBJECT_PROP_PERSON ? this.individualTable : this.enterpriseTable;
-        this.showDialog = true
-      },
-      handleDialogOpen() {
-        this.$nextTick(() => {
-          this.$refs.choose.handleSearch();
+      getProjectNameOptions() {
+        getProjectNameOptions().then(({ data }) => {
+          if (data.code === 200) {
+            const list = data.body ? data.body.map(_ => ({
+              text: _.projectName,
+              value: _.id,
+              extraData: {
+                assetKind: _.assetKind,
+                projectType: _.projectType,
+                riskSwitch: _.riskSwitch
+              }
+            })) : [];
+            this.$store.commit('application/updateProjectNameList', list);
+          }
         })
       },
-      handleDialogClose() {
-        this.$refs.choose.clear();
-        this.customerList = [];
-        this.customerPageTotal = 0;
-      },
-      handleSearchCustomer(search) {
-        this.getCustomerList(search).then(response => {
-          const res = response.data;
-          if (res.code === 200) {
-            this.customerList = res.body.list;
-            this.customerPageTotal = res.body.totalRecord;
-          }
-        }, () => {})
-      },
-      handleConfirmCustomer(customer) {
-        this.showDialog = false;
-        this.getCustomerDetail(customer.partyId).then(({data}) => {
-          if (data.code === 200) {
-            getCustomerBindCardList(customer.partyId).then(response => {
-              const res = response.data;
-              if (res.code === 200) {
-                this.$set(this.detail, 'cardList', res.body);
-                this.$set(this.detail, 'loanParty', customer.partyId);
-                this.$set(this.detail, 'loanPartyName', customer.customerName || customer.enterpriseName);
-                this.$set(this.detail, 'loanIdent', data.body.ident || data.body.uscCode); // 列表中有脱敏处理，此处用详情接口返回的
+      getCollectionCardList(intentionFund) {
+        if (!intentionFund) {
+          this.$store.commit('application/updateCollectionCardList', []);
+          return;
+        }
+        getCollectionCardList(intentionFund, this.$enum.BANK_USE_TYPE_COLLECTION).then(({ data }) => {
+          if (data.code === 200 && data.body) {
+            const list = data.body.map(_ => ({
+              text: `${_.bankCard}（${_.name}）`,
+              value: _.bankCard,
+              extraData: {
+                collectionAccount: _.name,
+                collectionAccountId: _.bankUserId
               }
-            })
+            }));
+            this.$store.commit('application/updateCollectionCardList', list)
           }
-        }, () => {});
+        })
       },
-      getCustomerDetail(id) {
-        if (this.customerType === this.$enum.SUBJECT_PROP_ORGANIZE) {
-          return getEnterpriseDetail(id)
-        } else {
-          return getIndividualDetail(id)
+      getServiceFeeRate(projectType, intentionFund) {
+        if (!projectType || !intentionFund) {
+          this.$store.commit('application/updateServiceFeeRate', undefined);
+          return;
         }
+        getServiceFeeRateByIntentionFund({
+          assetOrg: this.assetOrg,
+          loanProp: this.$enum.LOAN_PROP_NEW,
+          projectType,
+          ownerOrg: intentionFund
+        }).then(({ data }) => {
+          if (data.code === 200) {
+            this.$store.commit('application/updateServiceFeeRate', data.body)
+          }
+        })
       },
-      getCustomerList(search) {
-        if (this.customerType === this.$enum.SUBJECT_PROP_ORGANIZE) {
-          return getEnterpriseCustomerList(search)
-        } else {
-          return getIndividualCustomerList(search)
+      getProtectionPlanList(protectionModel, fundOrg) {
+        if (!protectionModel || !fundOrg) {
+          this.$store.commit('application/updateProtectionPlanList', []);
+          return;
         }
+        getProtectionPlanListByModel({
+          protectionModel,
+          fundOrg
+        }).then(({ data }) => {
+          if (data.code === 200) {
+            data.body = data.body || [];
+            const keys = data.body.map(_ => _.fileUrl);
+            this.getFiles(keys).then(() => {
+              data.body.forEach((item, i) => {
+                if (item.fileUrl) {
+                  item.fileUri = data.body[i];
+                }
+              });
+              this.$store.commit('application/updateProtectionPlanList', data.body || [])
+            });
+          }
+        })
+      },
+      getFiles(keys) {
+        return new Promise((resolve) => {
+          getPicUrls(keys).then(({ data }) => {
+            if (data.code === 200) {
+              resolve(data.body);
+            }
+          })
+        })
       }
     },
     components: {
-      Asset,
-      CustomerChoose
+      Asset
     }
   }
 </script>

@@ -1,20 +1,15 @@
 import http from '../../lib/http';
 
 export const getLoginOrg = () => {
-  return http.funds.get('v1/party/login/user/org/manager/detail')
+  return http.funds.get('/v2/party/org')
 };
 
-export const getOrgExtRel = (partyId, kinds) => {
-  return http.funds.get(`v1/party/rel/ext/list/${partyId}`, {
-    params: {
-      kinds
-    }
-  })
+export const editOrg = (data) => {
+  return http.funds.put('/v2/party/org', data)
 };
-export const getMaterialList = (partyId, kinds) => {
-  return http.funds.get(`v1/party/material/list/${partyId}`, {
-    params: {
-      kinds
-    }
+
+export const getOrgRelList = (params) => {
+  return http.funds.get('/v2/party/org/relation/page', {
+    params
   })
 };

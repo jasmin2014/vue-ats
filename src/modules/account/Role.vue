@@ -39,8 +39,7 @@
           <ats-input v-model.trim="currentValue.roleName"
                      :mode="mode"></ats-input>
         </el-form-item>
-        <el-form-item v-if="currentValue.appId !== $enum.BUSINESS_CHAIN_ASSET && currentValue.appId !== $enum.BUSINESS_CHAIN_FUND"
-                      label="权限分配" prop="actionCodeList">
+        <el-form-item label="权限分配" prop="actionCodeList">
           <el-checkbox-group v-model="currentValue.actionCodeList"
                              :disabled="mode === 'VIEW'">
             <el-table :data="currentAuthList.children || []"
@@ -60,7 +59,6 @@
                     </el-col>
                     <el-col :span="18">
                       <el-checkbox v-for="(op, index) in item.children" :key="index"
-                                   v-show="!hiddenActionList.includes(op.actionCode)"
                                    :label="op.actionCode"
                                    @change="handleAuthChange($event, op, item, scope.row, currentAuthList)">{{ op.tname }}</el-checkbox>
                     </el-col>
@@ -85,82 +83,6 @@
 </template>
 
 <script>
-  const ACTION_MAP = {
-    /** 资产中心 **/
-    CENTER: {
-      'M1003': 'P1004',
-      'M1010': 'P1011',
-      'M1017': 'P1018',
-      'M1021': 'P1022',
-      'M1024': 'P1025',
-      'M1027': 'P1028',
-      'M1030': 'P1031',
-      'M1033': 'P1034',
-      'M1085': 'P1086',
-      'M1036': 'P1037',
-      'M1039': 'P1040',
-      'M1042': 'P1043',
-      'M1051': 'P1052',
-      'M1055': 'P1056',
-      'M1058': 'P1059',
-      'M1060': 'P1061',
-      'M1063': 'P1064',
-      'M1066': 'P1067',
-      'M1073': 'P1074',
-      'M1079': 'P1080'
-    },
-    /** 资产端 **/
-    ASSET: {
-      'M2003': 'P2004',
-      'M2006': 'P2007',
-      'M2012': 'P2013',
-      'B2019': 'B2020',
-      'M2065': ['P2066', 'P2067'],
-      'M2021': 'P2022',
-      'P2075': 'P2076',
-      'M2026': 'P2027',
-      'M2030': 'P2031',
-      'M2033': 'P2034',
-      'M2035': 'P2036',
-      'M2079': 'P2080',
-      'M2038': 'P2039',
-      'M2041': 'P2042',
-      'M2044': 'P2045',
-      'P2049': 'P2047',
-      'M2051': 'M2052',
-      'M2057': 'P2058'
-    },
-    /** 资金端 **/
-    FUND: {
-      'M3003': 'P3004',
-      'M3006': 'P3007',
-      'M3012': 'P3013',
-      'B3016': 'B3015',
-      'M3017': 'P3018',
-      'M3022': 'P3023',
-      'M3070': 'P3072',
-      'P2075': 'P2076',
-      'M3026': 'P3027',
-      'M3030': 'P3031',
-      'M3033': 'P3034',
-      'M3035': 'P3036',
-      'M3074': 'P3075',
-      'M3040': 'P3041',
-      'M3044': 'P3045',
-      'M3047': 'P3048',
-      'P3052': 'P3067',
-      'M3054': 'P3055',
-      'M3060': 'P3061'
-    }
-  };
-  const ACTION_HIDDEN = {
-    CENTER: ['P1004', 'P1011', 'P1018', 'P1022', 'P1025', 'P1028', 'P1031', 'P1034', 'P1086', 'P1037', 'P1040', 'P1043', 'P1052', 'P1056', 'P1059', 'P1061', 'P1064', 'P1067', 'P1074', 'P1080'],
-    ASSET: ['P2004', 'P2007', 'P2013', 'B2020', 'P2066', 'P2067', 'P2022', 'P2076', 'P2027', 'P2031', 'P2034', 'P2036', 'P2080', 'P2039', 'P2042', 'P2045', 'P2047', 'M2052', 'P2058'],
-    FUND: ['P3004', 'P3007', 'P3013', 'B3015', 'P3018', 'P3023', 'P3072', 'P2076', 'P3027', 'P3031', 'P3034', 'P3036', 'P3075', 'P3041', 'P3045', 'P3048', 'P3067', 'P3055', 'P3061']
-  };
-
-  const tempHidden = ['M2074'];
-
   export default {
     props: {
       mode: String,
@@ -195,9 +117,7 @@
           actionCodeList: [
             { required: true, min: 2, message: '至少选择一个模块', trigger: 'change', type: 'array'}
           ]
-        },
-        hiddenActionList: ACTION_HIDDEN[this.value.appId],
-        actionMap: ACTION_MAP[this.value.appId]
+        }
       }
     },
     computed: {
@@ -211,27 +131,19 @@
     watch: {
       authList(val) {
         this.currentAuthList = this.$deepcopy(val);
-        if (this.authList.children) {
-          this.currentAuthList.children = val.children.filter(_ => !tempHidden.includes(_.actionCode))
-        }
       },
       value(val) {
         this.setCurrentValue(this.$deepcopy(val))
       },
       'value.actionCodeList'(val) {
         this.currentValue.actionCodeList = val;
-      },
-      'currentValue.appId'(val) {
-        this.actionMap = ACTION_MAP[val];
-        this.hiddenActionList = ACTION_HIDDEN[val];
       }
     },
+
     created() {
       this.currentAuthList = this.$deepcopy(this.authList);
-      if (this.authList.children) {
-        this.currentAuthList.children = this.authList.children.filter(_ => !tempHidden.includes(_.actionCode))
-      }
     },
+
     methods: {
       computedActionCodeMap(auths) {
         const map = {};
@@ -263,28 +175,12 @@
         this.$emit('app-change', value);
       },
       handleAuthChange(val, action, parent, grandparent, ggp) {
-        const relCodes = this.actionMap[action.actionCode];
         if (val) {
           this.$dfs(action.children, (item) => {
             this.currentValue.actionCodeList.push(item.actionCode)
           });
-          if (relCodes) {
-            if (relCodes instanceof Array) {
-              this.currentValue.actionCodeList = this.currentValue.actionCodeList.concat(relCodes);
-            } else {
-              this.currentValue.actionCodeList.push(relCodes);
-            }
-          }
           if (parent) {
             this.currentValue.actionCodeList.push(parent.actionCode);
-            const pRelCodes = this.actionMap[parent.actionCode];
-            if (pRelCodes) {
-              if (pRelCodes instanceof Array) {
-                this.currentValue.actionCodeList = this.currentValue.actionCodeList.concat(pRelCodes);
-              } else {
-                this.currentValue.actionCodeList.push(pRelCodes);
-              }
-            }
           }
           if (grandparent) {
             this.currentValue.actionCodeList.push(grandparent.actionCode)
@@ -297,9 +193,6 @@
           this.$dfs(action.children, (item) => {
             this.currentValue.actionCodeList = this.currentValue.actionCodeList.filter(_ => _ !== item.actionCode)
           });
-          if (relCodes) {
-            this.currentValue.actionCodeList = this.currentValue.actionCodeList.filter(_ => (relCodes instanceof Array ? !relCodes.includes(_) : relCodes !== _))
-          }
         }
         this.currentValue.actionCodeList = this.filteredActionCodeList;
       },

@@ -12,13 +12,14 @@
         </el-col>
         <el-col :span="10">
           <el-form-item label="关键词">
-            <el-input v-model.trim="search.searchKey" :placeholder="searchKeywordTitle"></el-input>
+            <el-input v-model.trim="search.searchKey"
+                      :placeholder="searchKeywordTitle"
+                      clearable></el-input>
           </el-form-item>
         </el-col>
         <el-col :span="3">
-          <el-button type="primary" icon="fa fa-search" title="查找" @click="handleSearch"></el-button>
-          <el-button v-action="'CustomerCreate'"
-                     type="primary" icon="fa fa-plus" title="新增客户" @click="handleCreate"></el-button>
+          <el-button type="primary" icon="fa fa-search" title="查找"
+                     @click="handleSearch"></el-button>
         </el-col>
       </el-row>
     </el-form>
@@ -33,18 +34,14 @@
               <el-button size="small" icon="fa fa-eye"
                          @click="handleDetail(scope.row)"></el-button>
             </el-tooltip>
-            <el-tooltip v-action="'CustomerEdit'"
-                        content="编辑">
-              <el-button size="small" type="info" icon="fa fa-edit"
-                         @click="handleEdit(scope.row)"></el-button>
-            </el-tooltip>
           </template>
         </el-table-column>
       </el-table>
     </el-row>
     <el-row type="flex" justify="center" class="mgt20">
-      <el-pagination layout="prev, next" :total="pageTotal" :page-size="search.pageSize"
-                     @current-change="getData"></el-pagination>
+      <el-pagination :total="pageTotal" :page-size="search.pageSize"
+                     layout="total, prev, pager, next, jumper, sizes" :page-sizes="[20, 50, 100]"
+                     @current-change="getData" @size-change="handlePageSizeChange"></el-pagination>
     </el-row>
   </div>
 </template>
@@ -64,30 +61,27 @@
         pageTotal: 0,
         list: [],
         personTable: [
-          { label: '客户编号', prop: 'personNo' },
-          { label: '客户姓名', prop: 'customerName' },
-          { label: '证件号码', prop: 'customerIdent' },
-          { label: '手机号码', prop: 'mobile' },
-          { label: '创建时间', prop: 'createdTime' },
-          { label: '创建渠道', prop: 'source' },
-          { label: '创建人', prop: 'creator' }
-        ],
-        companyTable: [
-          { label: '客户编号', prop: 'partyNo' },
-          { label: '企业名称', prop: 'enterpriseName' },
-          { label: '统一社会信用代码', prop: 'uscCode' },
-          { label: '企业法人代表姓名', prop: 'realName' },
+          { label: '客户编号', prop: 'id' },
+          { label: '客户姓名', prop: 'name' },
           { label: '证件号码', prop: 'ident' },
           { label: '创建时间', prop: 'createdTime' },
-          { label: '创建渠道', prop: 'ownerOrgName' },
-          { label: '创建人', prop: 'createdName' }
+          { label: '创建渠道', prop: 'partyOrgName' },
+          { label: '创建人', prop: 'creatorName' }
+        ],
+        companyTable: [
+          { label: '客户编号', prop: 'id' },
+          { label: '企业名称', prop: 'name' },
+          { label: '统一社会信用代码', prop: 'ident' },
+          { label: '创建时间', prop: 'createdTime' },
+          { label: '创建渠道', prop: 'partyOrgName' },
+          { label: '创建人', prop: 'creatorName' }
         ],
         table: []
       };
     },
     computed: {
       searchKeywordTitle() {
-        return this.search.customerType === this.$enum.SUBJECT_PROP_ORGANIZE ? '客户编号/企业名称/统一社会信用代码/企业法人代表姓名' : '客户编号/客户姓名/证件号码/手机号码'
+        return this.search.customerType === this.$enum.SUBJECT_PROP_ORGANIZE ? '客户编号/企业名称/统一社会信用代码' : '客户编号/客户姓名/证件号码'
       }
     },
     created() {
@@ -98,24 +92,19 @@
       handleSearch() {
         this.getData(1)
       },
-      handleCreate() {
-        this.$router.push({
-          name: 'CustomerCreate',
-          query: { type: this.customerType }
-        });
+      handlePageSizeChange(size) {
+        this.search.pageSize = size;
+        this.getData(this.search.pageNumber)
       },
       handleDetail(row) {
         this.$router.push({
           name: 'CustomerDetail',
-          params: { id: row.partyId },
-          query: { type: this.customerType }
+          params: { id: row.loanPartyId },
+          query: {
+            type: this.customerType,
+            id: row.id
+          }
         });
-      },
-      handleEdit(row) {
-        this.$router.push({
-          name: 'CustomerEdit',
-          params: { id: row.partyId },
-          query: { type: this.customerType }});
       },
       getData(index) {
         const search = this.$objFilter(this.$deepcopy(this.search), _ => _ !== '');

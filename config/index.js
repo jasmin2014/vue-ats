@@ -3,7 +3,9 @@ var path = require('path')
 var proxy = require('../proxy')
 var env = require('./prod.env')
 
-if (process.argv[2] === 'test') {
+if (process.argv[2] === 'uat') {
+  env = require('./uat.env')
+} else if (process.argv[2] === 'test') {
   env = require('./test.env')
 } else if (process.argv[2] === 'dev') {
   env = require('./dev.env')
